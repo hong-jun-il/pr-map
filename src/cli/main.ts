@@ -8,6 +8,7 @@ import { collect } from './collect';
 import { COMMENT_MARKER } from './comment';
 import { CliError, repoRoot, run, tryGit } from './git';
 import { commentPath, inputPath, mapPath, readJson, readJsonIfExists, statePath, viewerDataPath, viewerHtmlPath, writeJson } from './paths';
+import { cmdSetup } from './setup';
 import { checkRules, checkSchema, countUnverified, demote, normalize, stabilizeIds, type Problem } from './validate';
 
 const MAX_ATTEMPTS = 3;
@@ -198,13 +199,22 @@ const USAGE = `사용법: pr-map <명령>
   build                                 뷰어와 PR 댓글을 만듭니다
   publish                               PR 댓글을 게시하거나 갱신합니다
   view [--no-open]                      뷰어를 엽니다
-  setup                                 (아직 지원하지 않음) 자동 실행 설치`;
+  setup                                 자동 실행 설치 상태와 다음 단계를 보여줍니다
+  setup --install [--force]             워크플로 설치 브랜치를 올리고 PR을 만듭니다
+  setup --secret-from-env               환경변수의 API 키를 저장소 시크릿으로 등록합니다`;
 
 function main(): number {
   const [command, ...rest] = process.argv.slice(2);
   const { values } = parseArgs({
     args: rest,
-    options: { pr: { type: 'string' }, base: { type: 'string' }, 'no-open': { type: 'boolean' } },
+    options: {
+      pr: { type: 'string' },
+      base: { type: 'string' },
+      'no-open': { type: 'boolean' },
+      install: { type: 'boolean' },
+      force: { type: 'boolean' },
+      'secret-from-env': { type: 'boolean' },
+    },
     allowPositionals: false,
   });
   if (!command || command === 'help' || command === '--help') {
@@ -231,8 +241,7 @@ function main(): number {
       cmdView(root, { open: !values['no-open'] });
       return 0;
     case 'setup':
-      console.log('자동 실행(setup)은 아직 지원하지 않습니다. 지금은 /pr-map으로 로컬에서 분석하고 게시합니다.');
-      return 0;
+      return cmdSetup(root, { install: !!values.install, force: !!values.force, secretFromEnv: !!values['secret-from-env'] });
     default:
       console.error(USAGE);
       return 1;

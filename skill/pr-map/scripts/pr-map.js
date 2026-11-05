@@ -3255,8 +3255,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path6) {
-      let input = path6;
+    function removeDotSegments(path7) {
+      let input = path7;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3330,11 +3330,11 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function removeDotSegmentsRelative(path6) {
-      if (path6 === "" || path6[0] === "/") {
-        return removeDotSegments(path6);
+    function removeDotSegmentsRelative(path7) {
+      if (path7 === "" || path7[0] === "/") {
+        return removeDotSegments(path7);
       }
-      const segments = path6.split("/");
+      const segments = path7.split("/");
       const last = segments.length - 1;
       const output = [];
       let trailingDirectory = false;
@@ -3697,8 +3697,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path6 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path6 && path6 !== "/" ? path6 : void 0;
+        const path7 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7583,17 +7583,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path6) {
-      const ctrl = callVisitor(key, node, visitor, path6);
+    function visit_(key, node, visitor, path7) {
+      const ctrl = callVisitor(key, node, visitor, path7);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path6, ctrl);
-        return visit_(key, ctrl, visitor, path6);
+        replaceNode(key, path7, ctrl);
+        return visit_(key, ctrl, visitor, path7);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path6 = Object.freeze(path6.concat(node));
+          path7 = Object.freeze(path7.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path6);
+            const ci = visit_(i, node.items[i], visitor, path7);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -7604,13 +7604,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path6 = Object.freeze(path6.concat(node));
-          const ck = visit_("key", node.key, visitor, path6);
+          path7 = Object.freeze(path7.concat(node));
+          const ck = visit_("key", node.key, visitor, path7);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path6);
+          const cv = visit_("value", node.value, visitor, path7);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -7631,17 +7631,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path6) {
-      const ctrl = await callVisitor(key, node, visitor, path6);
+    async function visitAsync_(key, node, visitor, path7) {
+      const ctrl = await callVisitor(key, node, visitor, path7);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path6, ctrl);
-        return visitAsync_(key, ctrl, visitor, path6);
+        replaceNode(key, path7, ctrl);
+        return visitAsync_(key, ctrl, visitor, path7);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path6 = Object.freeze(path6.concat(node));
+          path7 = Object.freeze(path7.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path6);
+            const ci = await visitAsync_(i, node.items[i], visitor, path7);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -7652,13 +7652,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path6 = Object.freeze(path6.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path6);
+          path7 = Object.freeze(path7.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path7);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path6);
+          const cv = await visitAsync_("value", node.value, visitor, path7);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -7685,23 +7685,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path6) {
+    function callVisitor(key, node, visitor, path7) {
       if (typeof visitor === "function")
-        return visitor(key, node, path6);
+        return visitor(key, node, path7);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path6);
+        return visitor.Map?.(key, node, path7);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path6);
+        return visitor.Seq?.(key, node, path7);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path6);
+        return visitor.Pair?.(key, node, path7);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path6);
+        return visitor.Scalar?.(key, node, path7);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path6);
+        return visitor.Alias?.(key, node, path7);
       return void 0;
     }
-    function replaceNode(key, path6, node) {
-      const parent = path6[path6.length - 1];
+    function replaceNode(key, path7, node) {
+      const parent = path7[path7.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -8313,10 +8313,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path6, value) {
+    function collectionFromPath(schema, path7, value) {
       let v = value;
-      for (let i = path6.length - 1; i >= 0; --i) {
-        const k = path6[i];
+      for (let i = path7.length - 1; i >= 0; --i) {
+        const k = path7[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -8335,7 +8335,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path6) => path6 == null || typeof path6 === "object" && !!path6[Symbol.iterator]().next().done;
+    var isEmptyPath = (path7) => path7 == null || typeof path7 === "object" && !!path7[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -8365,11 +8365,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path6, value) {
-        if (isEmptyPath(path6))
+      addIn(path7, value) {
+        if (isEmptyPath(path7))
           this.add(value);
         else {
-          const [key, ...rest] = path6;
+          const [key, ...rest] = path7;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -8383,8 +8383,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path6) {
-        const [key, ...rest] = path6;
+      deleteIn(path7) {
+        const [key, ...rest] = path7;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -8398,8 +8398,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path6, keepScalar) {
-        const [key, ...rest] = path6;
+      getIn(path7, keepScalar) {
+        const [key, ...rest] = path7;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -8417,8 +8417,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path6) {
-        const [key, ...rest] = path6;
+      hasIn(path7) {
+        const [key, ...rest] = path7;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -8428,8 +8428,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path6, value) {
-        const [key, ...rest] = path6;
+      setIn(path7, value) {
+        const [key, ...rest] = path7;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -10944,9 +10944,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path6, value) {
+      addIn(path7, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path6, value);
+          this.contents.addIn(path7, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -11021,14 +11021,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path6) {
-        if (Collection.isEmptyPath(path6)) {
+      deleteIn(path7) {
+        if (Collection.isEmptyPath(path7)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path6) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path7) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -11043,10 +11043,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path6, keepScalar) {
-        if (Collection.isEmptyPath(path6))
+      getIn(path7, keepScalar) {
+        if (Collection.isEmptyPath(path7))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path6, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path7, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -11057,10 +11057,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path6) {
-        if (Collection.isEmptyPath(path6))
+      hasIn(path7) {
+        if (Collection.isEmptyPath(path7))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path6) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path7) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -11077,13 +11077,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path6, value) {
-        if (Collection.isEmptyPath(path6)) {
+      setIn(path7, value) {
+        if (Collection.isEmptyPath(path7)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path6), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path7), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path6, value);
+          this.contents.setIn(path7, value);
         }
       }
       /**
@@ -13044,9 +13044,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path6) => {
+    visit.itemAtPath = (cst, path7) => {
       let item = cst;
-      for (const [field, index] of path6) {
+      for (const [field, index] of path7) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -13055,23 +13055,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path6) => {
-      const parent = visit.itemAtPath(cst, path6.slice(0, -1));
-      const field = path6[path6.length - 1][0];
+    visit.parentCollection = (cst, path7) => {
+      const parent = visit.itemAtPath(cst, path7.slice(0, -1));
+      const field = path7[path7.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path6, item, visitor) {
-      let ctrl = visitor(item, path6);
+    function _visit(path7, item, visitor) {
+      let ctrl = visitor(item, path7);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path6.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path7.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -13082,10 +13082,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path6);
+            ctrl = ctrl(item, path7);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path6) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path7) : ctrl;
     }
     exports2.visit = visit;
   }
@@ -14838,7 +14838,7 @@ var require_dist = __commonJS({
 
 // src/cli/main.ts
 var import_node_child_process2 = require("node:child_process");
-var import_node_fs5 = require("node:fs");
+var import_node_fs6 = require("node:fs");
 var import_node_util = require("node:util");
 
 // src/cli/build.ts
@@ -14920,7 +14920,10 @@ function fileSection(f, open, data, withTree) {
   lines.push("", "</details>");
   return lines.join("\n");
 }
-function buildComment(data) {
+function viewerHint(runUrl) {
+  return runUrl ? `\uC804\uCCB4 \uC9C0\uB3C4\uB294 [\uC2E4\uD589 \uD398\uC774\uC9C0](${runUrl})\uC5D0\uC11C \`pr-map-viewer\` artifact\uB97C \uBC1B\uC544 \uC555\uCD95\uC744 \uD480\uACE0 \`index.html\`\uB85C \uC5FD\uB2C8\uB2E4. artifact\uB294 14\uC77C \uB3D9\uC548 \uBCF4\uAD00\uB429\uB2C8\uB2E4.` : "\uC804\uCCB4 \uC9C0\uB3C4\uB294 \uCCB4\uD06C\uC544\uC6C3 \uD6C4 `/pr-map view`\uB85C \uC5FD\uB2C8\uB2E4.";
+}
+function buildComment(data, runUrl) {
   const { pr, counts: c } = data;
   const changed = data.files.filter((f) => f.status !== "reference").length;
   const refs = data.files.length - changed;
@@ -14936,7 +14939,7 @@ function buildComment(data) {
     const footer = [
       `\uADFC\uAC70 \uD655\uC778 \uD544\uC694 ${c.unverified}\uAC74 \xB7 \uBD84\uC11D \uCEE4\uBC0B \`${head}\` \xB7 \uBBF8\uBD84\uB958 ${c.unclassified}\uAC1C`,
       "",
-      "<sub>\uC804\uCCB4 \uC9C0\uB3C4\uB294 \uCCB4\uD06C\uC544\uC6C3 \uD6C4 `/pr-map view`\uB85C \uC5FD\uB2C8\uB2E4. \uADFC\uAC70 \uC904 \uC704\uCE58\uB294 \uCEE4\uBC0B\uC5D0\uC11C \uAC80\uC99D\uD588\uC9C0\uB9CC, \uC124\uBA85\uC758 \uC758\uBBF8\uB294 \uC790\uB3D9 \uAC80\uC99D \uB300\uC0C1\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uC774 \uB313\uAE00\uC740 \uBD84\uC11D\uC744 \uB2E4\uC2DC \uAC8C\uC2DC\uD560 \uB54C \uAC31\uC2E0\uB429\uB2C8\uB2E4.</sub>"
+      `<sub>${viewerHint(runUrl)} \uADFC\uAC70 \uC904 \uC704\uCE58\uB294 \uCEE4\uBC0B\uC5D0\uC11C \uAC80\uC99D\uD588\uC9C0\uB9CC, \uC124\uBA85\uC758 \uC758\uBBF8\uB294 \uC790\uB3D9 \uAC80\uC99D \uB300\uC0C1\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uC774 \uB313\uAE00\uC740 \uBD84\uC11D\uC744 \uB2E4\uC2DC \uAC8C\uC2DC\uD560 \uB54C \uAC31\uC2E0\uB429\uB2C8\uB2E4.</sub>`
     ];
     return [
       COMMENT_MARKER,
@@ -14958,7 +14961,7 @@ function buildComment(data) {
     const body = compose(n);
     if (body.length <= MAX_COMMENT) return body;
   }
-  return [COMMENT_MARKER, "## PR Map", "", escapeMd(pr.summary), "", `\uBD84\uC11D \uCEE4\uBC0B \`${head}\`. \uACB0\uACFC\uAC00 \uB108\uBB34 \uAE38\uC5B4 \uC804\uCCB4 \uC9C0\uB3C4\uC5D0\uC11C\uB9CC \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.`, ""].join("\n");
+  return [COMMENT_MARKER, "## PR Map", "", escapeMd(pr.summary), "", `\uBD84\uC11D \uCEE4\uBC0B \`${head}\`. \uACB0\uACFC\uAC00 \uB108\uBB34 \uAE38\uC5B4 \uC804\uCCB4 \uC9C0\uB3C4\uC5D0\uC11C\uB9CC \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4. ${viewerHint(runUrl)}`, ""].join("\n");
 }
 
 // src/cli/paths.ts
@@ -15137,11 +15140,11 @@ function overlaps(ev, lines) {
   for (let i = ev.start; i <= ev.end; i++) if (lines.has(i)) return true;
   return false;
 }
-function locate(evidence, path6, code, renamed, out, node) {
+function locate(evidence, path7, code, renamed, out, node) {
   let ok = true;
   const located = [];
   evidence.forEach((ev, i) => {
-    const p = `${path6}[${i}]`;
+    const p = `${path7}[${i}]`;
     if (ev.start > ev.end) {
       out.push({ path: p, reason: `start(${ev.start})\uAC00 end(${ev.end})\uBCF4\uB2E4 \uD07D\uB2C8\uB2E4.`, node });
       ok = false;
@@ -15167,36 +15170,36 @@ function locate(evidence, path6, code, renamed, out, node) {
   });
   return ok ? located : null;
 }
-function checkNode(n, path6, depth, file, code, renamed, ids, out) {
+function checkNode(n, path7, depth, file, code, renamed, ids, out) {
   const node = { file: file.id, id: n.id };
-  if (ids.has(n.id)) out.push({ path: path6, reason: `\uB178\uB4DC id "${n.id}"\uAC00 \uD30C\uC77C \uC548\uC5D0\uC11C \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+  if (ids.has(n.id)) out.push({ path: path7, reason: `\uB178\uB4DC id "${n.id}"\uAC00 \uD30C\uC77C \uC548\uC5D0\uC11C \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
   ids.add(n.id);
-  if (depth > MAX_DEPTH) out.push({ path: path6, reason: `\uD2B8\uB9AC \uAE4A\uC774\uAC00 ${MAX_DEPTH}\uB2E8\uACC4\uB97C \uB118\uC2B5\uB2C8\uB2E4. \uBB36\uC5B4\uC11C \uC904\uC774\uC138\uC694.` });
-  if (file.status === "added" && n.change !== "added") out.push({ path: path6, reason: "\uCD94\uAC00\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 added\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
-  if (file.status === "deleted" && n.change !== "deleted") out.push({ path: path6, reason: "\uC0AD\uC81C\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 deleted\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
+  if (depth > MAX_DEPTH) out.push({ path: path7, reason: `\uD2B8\uB9AC \uAE4A\uC774\uAC00 ${MAX_DEPTH}\uB2E8\uACC4\uB97C \uB118\uC2B5\uB2C8\uB2E4. \uBB36\uC5B4\uC11C \uC904\uC774\uC138\uC694.` });
+  if (file.status === "added" && n.change !== "added") out.push({ path: path7, reason: "\uCD94\uAC00\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 added\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
+  if (file.status === "deleted" && n.change !== "deleted") out.push({ path: path7, reason: "\uC0AD\uC81C\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 deleted\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
   if (!n.unverified) {
-    const located = locate(n.evidence, `${path6}.evidence`, code, renamed, out, node);
+    const located = locate(n.evidence, `${path7}.evidence`, code, renamed, out, node);
     if (located) {
       const anyChanged = located.some((l) => l.changed);
       const anyBase = located.some((l) => l.ev.side === "base");
       if (n.change === "added") {
-        if (anyBase) out.push({ path: path6, reason: "added \uB178\uB4DC\uC5D0\uB294 base \uADFC\uAC70\uB97C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.", node });
-        if (!located.some((l) => l.changed && l.ev.side === "head")) out.push({ path: path6, reason: "added \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 head\uC758 + \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", node });
+        if (anyBase) out.push({ path: path7, reason: "added \uB178\uB4DC\uC5D0\uB294 base \uADFC\uAC70\uB97C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.", node });
+        if (!located.some((l) => l.changed && l.ev.side === "head")) out.push({ path: path7, reason: "added \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 head\uC758 + \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", node });
       } else if (n.change === "deleted") {
-        if (located.some((l) => l.ev.side !== "base")) out.push({ path: path6, reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uB294 \uBAA8\uB450 base\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
-        if (!located.some((l) => l.changed && l.ev.side === "base")) out.push({ path: path6, reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 base\uC758 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", node });
+        if (located.some((l) => l.ev.side !== "base")) out.push({ path: path7, reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uB294 \uBAA8\uB450 base\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
+        if (!located.some((l) => l.changed && l.ev.side === "base")) out.push({ path: path7, reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 base\uC758 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", node });
       } else if (n.change === "modified") {
-        if (!anyChanged) out.push({ path: path6, reason: "modified \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 + \uB610\uB294 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC790\uC2E0\uC758 \uCF54\uB4DC\uAC00 \uADF8\uB300\uB85C\uBA74 unchanged\uB85C \uC4F0\uC138\uC694.", node });
+        if (!anyChanged) out.push({ path: path7, reason: "modified \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 + \uB610\uB294 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC790\uC2E0\uC758 \uCF54\uB4DC\uAC00 \uADF8\uB300\uB85C\uBA74 unchanged\uB85C \uC4F0\uC138\uC694.", node });
       } else if (anyChanged) {
-        out.push({ path: path6, reason: `${n.change} \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE69\uB2C8\uB2E4.`, node });
+        out.push({ path: path7, reason: `${n.change} \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE69\uB2C8\uB2E4.`, node });
       }
     }
     if (n.change === "affected" && n.affectedBy) {
-      const cause = locate(n.affectedBy.evidence, `${path6}.affectedBy.evidence`, code, renamed, out, node);
-      if (cause && !cause.some((l) => l.changed)) out.push({ path: path6, reason: "affectedBy \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC6D0\uC778\uC744 \uD2B9\uC815\uD558\uC9C0 \uBABB\uD558\uBA74 affected\uB85C \uC4F0\uC9C0 \uB9C8\uC138\uC694.", node });
+      const cause = locate(n.affectedBy.evidence, `${path7}.affectedBy.evidence`, code, renamed, out, node);
+      if (cause && !cause.some((l) => l.changed)) out.push({ path: path7, reason: "affectedBy \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC6D0\uC778\uC744 \uD2B9\uC815\uD558\uC9C0 \uBABB\uD558\uBA74 affected\uB85C \uC4F0\uC9C0 \uB9C8\uC138\uC694.", node });
     }
   }
-  n.children?.forEach((c, i) => checkNode(c, `${path6}.children[${i}]`, depth + 1, file, code, renamed, ids, out));
+  n.children?.forEach((c, i) => checkNode(c, `${path7}.children[${i}]`, depth + 1, file, code, renamed, ids, out));
 }
 function checkRules(map, input, code) {
   const out = [];
@@ -15206,22 +15209,22 @@ function checkRules(map, input, code) {
   const renamed = new Map(input.files.filter((f) => f.oldPath).map((f) => [f.path, f.oldPath]));
   const fileIds = /* @__PURE__ */ new Map();
   map.files.forEach((f, i) => {
-    const path6 = `files[${i}]`;
-    if (fileIds.has(f.id)) out.push({ path: path6, reason: `\uD30C\uC77C id "${f.id}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+    const path7 = `files[${i}]`;
+    if (fileIds.has(f.id)) out.push({ path: path7, reason: `\uD30C\uC77C id "${f.id}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
     fileIds.set(f.id, f);
-    if (unclassified.has(f.path)) out.push({ path: path6, reason: `\uBBF8\uBD84\uB958 \uD30C\uC77C ${f.path}\uB294 files\uC5D0 \uB123\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.` });
+    if (unclassified.has(f.path)) out.push({ path: path7, reason: `\uBBF8\uBD84\uB958 \uD30C\uC77C ${f.path}\uB294 files\uC5D0 \uB123\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.` });
     const c = changed.get(f.path);
     if (f.status === "reference") {
-      if (allChanged.has(f.path)) out.push({ path: path6, reason: `${f.path}\uB294 \uBCC0\uACBD\uB41C \uD30C\uC77C\uC774\uB77C reference\uB85C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` });
-      else if (!code.exists("head", f.path)) out.push({ path: path6, reason: `\uCC38\uACE0 \uD30C\uC77C ${f.path}\uAC00 head\uC5D0 \uC5C6\uC2B5\uB2C8\uB2E4.` });
+      if (allChanged.has(f.path)) out.push({ path: path7, reason: `${f.path}\uB294 \uBCC0\uACBD\uB41C \uD30C\uC77C\uC774\uB77C reference\uB85C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` });
+      else if (!code.exists("head", f.path)) out.push({ path: path7, reason: `\uCC38\uACE0 \uD30C\uC77C ${f.path}\uAC00 head\uC5D0 \uC5C6\uC2B5\uB2C8\uB2E4.` });
     } else if (!c) {
-      if (!unclassified.has(f.path)) out.push({ path: path6, reason: `${f.path}\uB294 input.json\uC758 \uBCC0\uACBD \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uBCC0\uACBD \uC5C6\uB294 \uD30C\uC77C\uC740 reference\uB85C \uC4F0\uC138\uC694.` });
+      if (!unclassified.has(f.path)) out.push({ path: path7, reason: `${f.path}\uB294 input.json\uC758 \uBCC0\uACBD \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uBCC0\uACBD \uC5C6\uB294 \uD30C\uC77C\uC740 reference\uB85C \uC4F0\uC138\uC694.` });
     } else {
-      if (c.status !== f.status) out.push({ path: path6, reason: `status\uB294 input.json \uAC12(${c.status})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.` });
-      if (c.oldPath !== f.oldPath) out.push({ path: path6, reason: `oldPath\uB294 input.json \uAC12(${c.oldPath ?? "\uC5C6\uC74C"})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.` });
+      if (c.status !== f.status) out.push({ path: path7, reason: `status\uB294 input.json \uAC12(${c.status})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.` });
+      if (c.oldPath !== f.oldPath) out.push({ path: path7, reason: `oldPath\uB294 input.json \uAC12(${c.oldPath ?? "\uC5C6\uC74C"})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.` });
     }
     const ids = /* @__PURE__ */ new Set();
-    f.tree.forEach((n, j) => checkNode(n, `${path6}.tree[${j}]`, 1, f, code, renamed, ids, out));
+    f.tree.forEach((n, j) => checkNode(n, `${path7}.tree[${j}]`, 1, f, code, renamed, ids, out));
   });
   map.files.forEach((f, i) => {
     f.replacedBy?.forEach((id, j) => {
@@ -15229,13 +15232,13 @@ function checkRules(map, input, code) {
     });
   });
   map.edges.forEach((e, i) => {
-    const path6 = `edges[${i}]`;
-    if (!fileIds.has(e.from)) out.push({ path: path6, reason: `from "${e.from}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
-    if (!fileIds.has(e.to)) out.push({ path: path6, reason: `to "${e.to}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
+    const path7 = `edges[${i}]`;
+    if (!fileIds.has(e.from)) out.push({ path: path7, reason: `from "${e.from}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
+    if (!fileIds.has(e.to)) out.push({ path: path7, reason: `to "${e.to}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
     if (e.kind === "replacedBy") {
       const from = fileIds.get(e.from);
       if (from && (from.status !== "deleted" || !from.replacedBy?.includes(e.to))) {
-        out.push({ path: path6, reason: "replacedBy \uC5E3\uC9C0\uC758 from\uC740 \uC0AD\uC81C \uD30C\uC77C\uC774\uACE0 replacedBy\uC5D0 to\uAC00 \uC788\uC5B4\uC57C \uD569\uB2C8\uB2E4." });
+        out.push({ path: path7, reason: "replacedBy \uC5E3\uC9C0\uC758 from\uC740 \uC0AD\uC81C \uD30C\uC77C\uC774\uACE0 replacedBy\uC5D0 to\uAC00 \uC788\uC5B4\uC57C \uD569\uB2C8\uB2E4." });
       }
     }
   });
@@ -15398,7 +15401,7 @@ function build(root, map, input, code) {
   const data = buildViewerData(map, input, code);
   writeJson(viewerDataPath(root), data);
   writeViewer(root, data);
-  writeText(commentPath(root), buildComment(data));
+  writeText(commentPath(root), buildComment(data, process.env.PR_MAP_RUN_URL || void 0));
   return data;
 }
 
@@ -15497,25 +15500,25 @@ var CodeIndex = class {
   sha(side) {
     return side === "base" ? this.base : this.head;
   }
-  exists(side, path6) {
-    const key = `${side}:${path6}`;
+  exists(side, path7) {
+    const key = `${side}:${path7}`;
     let hit = this.existsCache.get(key);
     if (hit === void 0) {
-      hit = tryGit(this.root, "cat-file", "-e", `${this.sha(side)}:${path6}`) !== null;
+      hit = tryGit(this.root, "cat-file", "-e", `${this.sha(side)}:${path7}`) !== null;
       this.existsCache.set(key, hit);
     }
     return hit;
   }
-  problem(side, path6) {
-    const size = tryGit(this.root, "cat-file", "-s", `${this.sha(side)}:${path6}`);
+  problem(side, path7) {
+    const size = tryGit(this.root, "cat-file", "-s", `${this.sha(side)}:${path7}`);
     if (size === null) return "not-found";
     if (Number(size.trim()) > MAX_FILE_BYTES) return "too-large";
     return null;
   }
-  read(side, path6) {
-    const problem = this.problem(side, path6);
+  read(side, path7) {
+    const problem = this.problem(side, path7);
     if (problem) return { error: problem };
-    const text = git(this.root, "show", `${this.sha(side)}:${path6}`);
+    const text = git(this.root, "show", `${this.sha(side)}:${path7}`);
     if (text.includes("\0")) return { error: "binary" };
     return { rows: plainRows(text) };
   }
@@ -15531,30 +15534,30 @@ var CodeIndex = class {
     return rows.length ? { rows } : this.read(headSide, headPath);
   }
   /** code 맵에서 쓰는 키. 이름 변경 파일은 base·head가 같은 키를 공유한다. */
-  key(side, path6) {
-    const change = side === "head" ? this.byHead.get(path6) : this.byBase.get(path6);
-    return change ? `change:${change.path}` : `${side}:${path6}`;
+  key(side, path7) {
+    const change = side === "head" ? this.byHead.get(path7) : this.byBase.get(path7);
+    return change ? `change:${change.path}` : `${side}:${path7}`;
   }
-  entry(side, path6) {
-    const key = this.key(side, path6);
+  entry(side, path7) {
+    const key = this.key(side, path7);
     const hit = this.cache.get(key);
     if (hit) return hit;
-    const change = side === "head" ? this.byHead.get(path6) : this.byBase.get(path6);
-    const entry = change ? this.diffEntry(change) : this.read(side, path6);
+    const change = side === "head" ? this.byHead.get(path7) : this.byBase.get(path7);
+    const entry = change ? this.diffEntry(change) : this.read(side, path7);
     this.cache.set(key, entry);
     return entry;
   }
-  lines(side, path6) {
-    const key = `${side}:${path6}`;
+  lines(side, path7) {
+    const key = `${side}:${path7}`;
     const hit = this.lineCache.get(key);
     if (hit !== void 0) return hit;
-    const info = this.computeLines(side, path6);
+    const info = this.computeLines(side, path7);
     this.lineCache.set(key, info);
     return info;
   }
-  computeLines(side, path6) {
-    if (!this.exists(side, path6)) return null;
-    const entry = this.entry(side, path6);
+  computeLines(side, path7) {
+    if (!this.exists(side, path7)) return null;
+    const entry = this.entry(side, path7);
     if (!("rows" in entry)) return null;
     const changed = /* @__PURE__ */ new Set();
     let lineCount = 0;
@@ -15891,6 +15894,222 @@ function collect(cwd, opts) {
   return input;
 }
 
+// src/cli/setup.ts
+var import_node_fs5 = require("node:fs");
+var import_node_os = require("node:os");
+var import_node_path6 = __toESM(require("node:path"), 1);
+var ACTION_REPO = "hong-jun-il/pr-map";
+var ACTION_TAG = "v1";
+var WORKFLOW_PATH = ".github/workflows/pr-map.yml";
+var SETUP_BRANCH = "pr-map/setup";
+var SECRET_NAME = "ANTHROPIC_API_KEY";
+function stderrOf(err) {
+  return err.stderr?.trim() ?? "";
+}
+function ghState(root) {
+  try {
+    run("gh", ["--version"], root);
+  } catch {
+    return "missing";
+  }
+  try {
+    run("gh", ["auth", "status", "--hostname", "github.com"], root);
+    return "ready";
+  } catch {
+    return "unauthenticated";
+  }
+}
+function actionState(root) {
+  const out = tryGit(root, "ls-remote", "--tags", `https://github.com/${ACTION_REPO}.git`, `refs/tags/${ACTION_TAG}`);
+  if (out === null) return "unknown";
+  return out.trim() ? "published" : "missing";
+}
+function defaultBranch2(root) {
+  const out = tryGit(root, "ls-remote", "--symref", "origin", "HEAD");
+  const branch = out && /^ref: refs\/heads\/(\S+)\s+HEAD$/m.exec(out)?.[1];
+  if (!branch) throw new CliError("origin\uC758 \uAE30\uBCF8 \uBE0C\uB79C\uCE58\uB97C \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uC811\uADFC \uAD8C\uD55C\uACFC \uCCAB \uCEE4\uBC0B \uC5EC\uBD80\uB97C \uD655\uC778\uD558\uC138\uC694.");
+  return branch;
+}
+function fetchBranch(root, branch) {
+  try {
+    git(root, "fetch", "-q", "--no-tags", "origin", `refs/heads/${branch}`);
+  } catch (err) {
+    throw new CliError(`origin/${branch}\uC744(\uB97C) \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
+${stderrOf(err)}`.trim());
+  }
+  return git(root, "rev-parse", "FETCH_HEAD").trim();
+}
+function workflowTemplate() {
+  return (0, import_node_fs5.readFileSync)(import_node_path6.default.join(assetsDir(), "pr-map.yml"), "utf8");
+}
+function workflowState(root, commit) {
+  const existing = tryGit(root, "show", `${commit}:${WORKFLOW_PATH}`);
+  if (existing === null) return "missing";
+  return existing === workflowTemplate() ? "current" : "different";
+}
+function secretState(root, repo, gh) {
+  if (gh !== "ready") return "unknown";
+  try {
+    const names = run("gh", ["secret", "list", "--repo", repo, "--json", "name", "--jq", ".[].name"], root);
+    return names.split("\n").includes(SECRET_NAME) ? "registered" : "missing";
+  } catch {
+    return "unknown";
+  }
+}
+function secretUrl(repo) {
+  return `https://github.com/${repo}/settings/secrets/actions/new`;
+}
+function compareUrl(repo, base) {
+  return `https://github.com/${repo}/compare/${base}...${SETUP_BRANCH}?expand=1`;
+}
+function actionProblem(state) {
+  if (state === "published") return null;
+  const action = `${ACTION_REPO}@${ACTION_TAG}`;
+  if (state === "missing") return `${action} \uD0DC\uADF8\uAC00 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4. \uC9C0\uAE08 \uC124\uCE58\uD558\uBA74 PR\uB9C8\uB2E4 \uC6CC\uD06C\uD50C\uB85C\uAC00 \uC2E4\uD328\uD569\uB2C8\uB2E4.`;
+  return `${action}\uC744(\uB97C) \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C\uAC00 \uBE44\uACF5\uAC1C\uC774\uAC70\uB098 \uB124\uD2B8\uC6CC\uD06C \uBB38\uC81C\uC77C \uC218 \uC788\uC2B5\uB2C8\uB2E4.`;
+}
+function showStatus(root) {
+  const repo = originRepo(root);
+  const base = defaultBranch2(root);
+  const workflow = workflowState(root, fetchBranch(root, base));
+  const action = actionState(root);
+  const gh = ghState(root);
+  const secret = secretState(root, repo, gh);
+  const hasEnvKey = !!process.env[SECRET_NAME]?.trim();
+  const labels = {
+    action: { published: "\uAC8C\uC2DC\uB428", missing: "\uD0DC\uADF8 \uC5C6\uC74C", unknown: "\uD655\uC778 \uBD88\uAC00" },
+    workflow: { current: "\uC124\uCE58\uB428", different: "\uB0B4\uC6A9\uC774 \uB2E4\uB984", missing: "\uC5C6\uC74C" },
+    gh: { ready: "\uC0AC\uC6A9 \uAC00\uB2A5", unauthenticated: "\uB85C\uADF8\uC778 \uD544\uC694", missing: "\uC124\uCE58 \uC548 \uB428" },
+    secret: { registered: "\uB4F1\uB85D\uB428", missing: "\uC5C6\uC74C", unknown: "\uD655\uC778 \uBD88\uAC00" }
+  };
+  console.log(`\uC800\uC7A5\uC18C: ${repo} (\uAE30\uBCF8 \uBE0C\uB79C\uCE58 ${base})`);
+  console.log(`\uC561\uC158 ${ACTION_REPO}@${ACTION_TAG}: ${labels.action[action]}`);
+  console.log(`\uC6CC\uD06C\uD50C\uB85C ${WORKFLOW_PATH}: ${labels.workflow[workflow]}`);
+  console.log(`gh: ${labels.gh[gh]}`);
+  console.log(`\uD658\uACBD\uBCC0\uC218 ${SECRET_NAME}: ${hasEnvKey ? "\uC788\uC74C" : "\uC5C6\uC74C"}`);
+  console.log(`\uC2DC\uD06C\uB9BF ${SECRET_NAME}: ${labels.secret[secret]}`);
+  const steps = [];
+  const problem = actionProblem(action);
+  if (problem) steps.push(`\uC124\uCE58 \uBD88\uAC00: ${problem}`);
+  else if (workflow === "missing") steps.push("\uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 PR \uB9CC\uB4E4\uAE30: setup --install");
+  else if (workflow === "different") steps.push("\uAE30\uC874 \uC6CC\uD06C\uD50C\uB85C\uB97C \uB36E\uC5B4\uC4F8\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD655\uC778: setup --install --force");
+  if (secret !== "registered") {
+    if (gh === "ready" && hasEnvKey) steps.push("\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uB3D9\uC758 \uD544\uC694): setup --secret-from-env");
+    else if (gh === "ready") steps.push(`\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uD130\uBBF8\uB110\uC5D0\uC11C): gh secret set ${SECRET_NAME} --repo ${repo}`);
+    else steps.push(`\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC6F9): ${secretUrl(repo)}`);
+  }
+  console.log(steps.length ? `\uB2E4\uC74C \uB2E8\uACC4:
+${steps.map((s) => `- ${s}`).join("\n")}` : "\uC124\uCE58\uAC00 \uB05D\uB0AC\uC2B5\uB2C8\uB2E4.");
+}
+function pushWorkflowBranch(root, commit) {
+  const dir = (0, import_node_fs5.mkdtempSync)(import_node_path6.default.join((0, import_node_os.tmpdir)(), "pr-map-setup-"));
+  try {
+    git(root, "worktree", "add", "-q", "--detach", dir, commit);
+    const file = import_node_path6.default.join(dir, WORKFLOW_PATH);
+    (0, import_node_fs5.mkdirSync)(import_node_path6.default.dirname(file), { recursive: true });
+    (0, import_node_fs5.writeFileSync)(file, workflowTemplate());
+    git(dir, "add", WORKFLOW_PATH);
+    git(dir, "commit", "-q", "--no-verify", "-m", "PR Map \uC790\uB3D9 \uC2E4\uD589 \uC6CC\uD06C\uD50C\uB85C \uCD94\uAC00");
+    git(dir, "push", "-q", "--no-verify", "origin", `HEAD:refs/heads/${SETUP_BRANCH}`);
+  } catch (err) {
+    throw new CliError(`\uC124\uCE58 \uBE0C\uB79C\uCE58\uB97C \uC62C\uB9AC\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
+${stderrOf(err)}`.trim());
+  } finally {
+    tryGit(root, "worktree", "remove", "--force", dir);
+    (0, import_node_fs5.rmSync)(dir, { recursive: true, force: true });
+  }
+}
+function openInstallPr(root, repo, base) {
+  const manual = () => console.log(`\uC774 \uB9C1\uD06C\uC5D0\uC11C PR\uC744 \uB9CC\uB4DC\uC138\uC694: ${compareUrl(repo, base)}`);
+  if (ghState(root) !== "ready") {
+    manual();
+    return;
+  }
+  try {
+    const existing = run("gh", ["pr", "list", "--repo", repo, "--head", SETUP_BRANCH, "--state", "open", "--json", "url", "--jq", '.[0].url // ""'], root).trim();
+    if (existing) {
+      console.log(`\uC124\uCE58 PR\uC774 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4: ${existing}`);
+      return;
+    }
+    const url = run(
+      "gh",
+      [
+        "pr",
+        "create",
+        "--repo",
+        repo,
+        "--base",
+        base,
+        "--head",
+        SETUP_BRANCH,
+        "--title",
+        "PR Map \uC790\uB3D9 \uC2E4\uD589 \uC124\uCE58",
+        "--body",
+        `PR\uC774 \uC5F4\uB9AC\uAC70\uB098 \uAC31\uC2E0\uB420 \uB54C PR Map\uC744 \uC2E4\uD589\uD558\uB294 \uC6CC\uD06C\uD50C\uB85C\uB97C \uCD94\uAC00\uD569\uB2C8\uB2E4.
+
+\uBA38\uC9C0 \uC804\uC5D0 \uC800\uC7A5\uC18C \uC2DC\uD06C\uB9BF \`${SECRET_NAME}\`\uC744 \uB4F1\uB85D\uD574\uC57C \uD569\uB2C8\uB2E4.`
+      ],
+      root
+    ).trim();
+    console.log(`\uC124\uCE58 PR: ${url}`);
+  } catch (err) {
+    console.log(`gh\uB85C PR\uC744 \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. ${stderrOf(err)}`.trim());
+    manual();
+  }
+}
+function install(root, force) {
+  const repo = originRepo(root);
+  const problem = actionProblem(actionState(root));
+  if (problem) throw new CliError(`\uC124\uCE58\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. ${problem}`);
+  const base = defaultBranch2(root);
+  const commit = fetchBranch(root, base);
+  const workflow = workflowState(root, commit);
+  if (workflow === "current") {
+    console.log(`${base} \uBE0C\uB79C\uCE58\uC5D0 \uC6CC\uD06C\uD50C\uB85C\uAC00 \uC774\uBBF8 \uC124\uCE58\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.`);
+    return 0;
+  }
+  if (workflow === "different" && !force) {
+    throw new CliError(`${WORKFLOW_PATH}\uC774 \uC774\uBBF8 \uC788\uACE0 \uB0B4\uC6A9\uC774 \uB2E4\uB985\uB2C8\uB2E4. \uB36E\uC5B4\uC4F0\uB824\uBA74 --force\uB97C \uC4F0\uC138\uC694.`);
+  }
+  const branchExists = !!tryGit(root, "ls-remote", "--heads", "origin", `refs/heads/${SETUP_BRANCH}`)?.trim();
+  if (branchExists && force) {
+    throw new CliError(`\uC6D0\uACA9\uC5D0 ${SETUP_BRANCH} \uBE0C\uB79C\uCE58\uAC00 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4. \uB0B4\uC6A9\uC744 \uD655\uC778\uD574 \uC9C0\uC6B4 \uB4A4 \uB2E4\uC2DC \uC2E4\uD589\uD558\uC138\uC694.`);
+  }
+  if (branchExists) console.log(`\uC6D0\uACA9\uC758 ${SETUP_BRANCH} \uBE0C\uB79C\uCE58\uB97C \uADF8\uB300\uB85C \uC0AC\uC6A9\uD569\uB2C8\uB2E4.`);
+  else pushWorkflowBranch(root, commit);
+  openInstallPr(root, repo, base);
+  return 0;
+}
+function registerSecretFromEnv(root) {
+  const repo = originRepo(root);
+  const gh = ghState(root);
+  if (gh !== "ready") {
+    throw new CliError(`gh\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4(${gh === "missing" ? "\uC124\uCE58 \uC548 \uB428" : "\uB85C\uADF8\uC778 \uD544\uC694"}). \uC6F9\uC5D0\uC11C \uB4F1\uB85D\uD558\uC138\uC694: ${secretUrl(repo)}`);
+  }
+  const key = process.env[SECRET_NAME]?.trim();
+  if (!key) throw new CliError(`\uD658\uACBD\uBCC0\uC218 ${SECRET_NAME}\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD130\uBBF8\uB110\uC5D0\uC11C \uC9C1\uC811 \uB4F1\uB85D\uD558\uC138\uC694: gh secret set ${SECRET_NAME} --repo ${repo}`);
+  try {
+    run("gh", ["secret", "set", SECRET_NAME, "--repo", repo], root, key);
+  } catch (err) {
+    throw new CliError(`\uC2DC\uD06C\uB9BF\uC744 \uB4F1\uB85D\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
+${stderrOf(err)}`.trim());
+  }
+  if (secretState(root, repo, gh) !== "registered") {
+    throw new CliError(`\uB4F1\uB85D \uD6C4 ${SECRET_NAME}\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uC124\uC815\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694: https://github.com/${repo}/settings/secrets/actions`);
+  }
+  console.log(`\uC2DC\uD06C\uB9BF ${SECRET_NAME} \uB4F1\uB85D \uC644\uB8CC: ${repo}`);
+  return 0;
+}
+function cmdSetup(root, opts) {
+  process.env.GIT_TERMINAL_PROMPT = "0";
+  if (opts.install && opts.secretFromEnv) throw new CliError("--install\uACFC --secret-from-env\uB294 \uB530\uB85C \uC2E4\uD589\uD558\uC138\uC694.");
+  if (opts.force && !opts.install) throw new CliError("--force\uB294 --install\uACFC \uD568\uAED8 \uC4F0\uC138\uC694.");
+  if (opts.install) return install(root, opts.force);
+  if (opts.secretFromEnv) return registerSecretFromEnv(root);
+  showStatus(root);
+  return 0;
+}
+
 // src/cli/main.ts
 var MAX_ATTEMPTS = 3;
 function requireInput(root) {
@@ -15919,10 +16138,10 @@ function cmdCollect(root, opts) {
 function cmdValidate(root) {
   const input = requireInput(root);
   const file = mapPath(root);
-  if (!(0, import_node_fs5.existsSync)(file)) throw new CliError(".pr-map/pr-map.json\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBD84\uC11D \uACB0\uACFC\uB97C \uBA3C\uC800 \uC791\uC131\uD558\uC138\uC694.");
+  if (!(0, import_node_fs6.existsSync)(file)) throw new CliError(".pr-map/pr-map.json\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBD84\uC11D \uACB0\uACFC\uB97C \uBA3C\uC800 \uC791\uC131\uD558\uC138\uC694.");
   let map;
   try {
-    map = JSON.parse((0, import_node_fs5.readFileSync)(file, "utf8"));
+    map = JSON.parse((0, import_node_fs6.readFileSync)(file, "utf8"));
   } catch (err) {
     throw new CliError(`pr-map.json\uC744 JSON\uC73C\uB85C \uC77D\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${err.message}`);
   }
@@ -15990,7 +16209,7 @@ function statusData(root) {
   const input = readJsonIfExists(inputPath(root));
   if (!input) return { status: "empty" };
   const state = readJsonIfExists(statePath(root));
-  if (state?.errors?.length) return { status: "failed", pr: input.pr, errors: state.errors.map(({ path: path6, reason }) => ({ path: path6, reason })) };
+  if (state?.errors?.length) return { status: "failed", pr: input.pr, errors: state.errors.map(({ path: path7, reason }) => ({ path: path7, reason })) };
   return { status: "analyzing", pr: input.pr, changed: input.files.length };
 }
 function openInBrowser(file) {
@@ -16024,8 +16243,8 @@ function cmdPublish(root) {
     return;
   }
   const file = commentPath(root);
-  if (!(0, import_node_fs5.existsSync)(file)) throw new CliError("comment.md\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 build\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
-  const body = (0, import_node_fs5.readFileSync)(file, "utf8");
+  if (!(0, import_node_fs6.existsSync)(file)) throw new CliError("comment.md\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 build\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
+  const body = (0, import_node_fs6.readFileSync)(file, "utf8");
   const { repo, number, head } = input.pr;
   const latest = latestHead(root, input);
   if (latest && latest !== head) console.log(`\uC8FC\uC758: PR head\uAC00 \uBD84\uC11D \uB4A4 \uBC14\uB00C\uC5C8\uC2B5\uB2C8\uB2E4(\uCD5C\uC2E0 ${latest.slice(0, 7)}). \uBD84\uC11D \uCEE4\uBC0B ${head.slice(0, 7)} \uAE30\uC900\uC73C\uB85C \uAC8C\uC2DC\uD569\uB2C8\uB2E4.`);
@@ -16055,12 +16274,21 @@ var USAGE = `\uC0AC\uC6A9\uBC95: pr-map <\uBA85\uB839>
   build                                 \uBDF0\uC5B4\uC640 PR \uB313\uAE00\uC744 \uB9CC\uB4ED\uB2C8\uB2E4
   publish                               PR \uB313\uAE00\uC744 \uAC8C\uC2DC\uD558\uAC70\uB098 \uAC31\uC2E0\uD569\uB2C8\uB2E4
   view [--no-open]                      \uBDF0\uC5B4\uB97C \uC5FD\uB2C8\uB2E4
-  setup                                 (\uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC74C) \uC790\uB3D9 \uC2E4\uD589 \uC124\uCE58`;
+  setup                                 \uC790\uB3D9 \uC2E4\uD589 \uC124\uCE58 \uC0C1\uD0DC\uC640 \uB2E4\uC74C \uB2E8\uACC4\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4
+  setup --install [--force]             \uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 \uBE0C\uB79C\uCE58\uB97C \uC62C\uB9AC\uACE0 PR\uC744 \uB9CC\uB4ED\uB2C8\uB2E4
+  setup --secret-from-env               \uD658\uACBD\uBCC0\uC218\uC758 API \uD0A4\uB97C \uC800\uC7A5\uC18C \uC2DC\uD06C\uB9BF\uC73C\uB85C \uB4F1\uB85D\uD569\uB2C8\uB2E4`;
 function main() {
   const [command, ...rest] = process.argv.slice(2);
   const { values } = (0, import_node_util.parseArgs)({
     args: rest,
-    options: { pr: { type: "string" }, base: { type: "string" }, "no-open": { type: "boolean" } },
+    options: {
+      pr: { type: "string" },
+      base: { type: "string" },
+      "no-open": { type: "boolean" },
+      install: { type: "boolean" },
+      force: { type: "boolean" },
+      "secret-from-env": { type: "boolean" }
+    },
     allowPositionals: false
   });
   if (!command || command === "help" || command === "--help") {
@@ -16087,8 +16315,7 @@ function main() {
       cmdView(root, { open: !values["no-open"] });
       return 0;
     case "setup":
-      console.log("\uC790\uB3D9 \uC2E4\uD589(setup)\uC740 \uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC9C0\uAE08\uC740 /pr-map\uC73C\uB85C \uB85C\uCEEC\uC5D0\uC11C \uBD84\uC11D\uD558\uACE0 \uAC8C\uC2DC\uD569\uB2C8\uB2E4.");
-      return 0;
+      return cmdSetup(root, { install: !!values.install, force: !!values.force, secretFromEnv: !!values["secret-from-env"] });
     default:
       console.error(USAGE);
       return 1;
