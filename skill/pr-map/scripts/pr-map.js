@@ -15806,13 +15806,15 @@ function parseChanges(nameStatusZ, numstatZ) {
   }
   return out;
 }
-function ghPr(root, number) {
+function ghPr(root, repo, number) {
   try {
-    const args = ["pr", "view", ...number ? [String(number)] : [], "--json", "number,title,url,baseRefName,headRefName,headRefOid"];
+    const selector = number ? String(number) : tryGit(root, "symbolic-ref", "--quiet", "--short", "HEAD")?.trim();
+    if (!selector) return null;
+    const args = ["pr", "view", selector, "--repo", repo, "--json", "number,title,url,baseRefName,headRefName,headRefOid"];
     return JSON.parse(run("gh", args, root));
   } catch (err) {
     if (number) {
-      throw new CliError(`PR #${number} \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. gh \uC124\uCE58\xB7\uC778\uC99D\uACFC \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
+      throw new CliError(`${repo} PR #${number} \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. gh \uC124\uCE58\xB7\uC778\uC99D\uACFC \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
 ${err.stderr ?? ""}`.trim());
     }
     return null;
@@ -15841,7 +15843,7 @@ function excludeOutput(root) {
 function collect(cwd, opts) {
   const root = repoRoot(cwd);
   const repo = originRepo(root);
-  const gh = opts.base ? null : ghPr(root, opts.pr);
+  const gh = opts.base ? null : ghPr(root, repo, opts.pr);
   const baseRef = opts.base ?? gh?.baseRefName ?? defaultBranch(root);
   if (gh) {
     if (!resolveCommit(root, gh.headRefOid)) {
@@ -15978,7 +15980,7 @@ function cmdBuild(root) {
 function latestHead(root, input) {
   try {
     if (input.pr.number) {
-      const out = run("gh", ["pr", "view", String(input.pr.number), "--json", "headRefOid", "--jq", ".headRefOid"], root);
+      const out = run("gh", ["pr", "view", String(input.pr.number), "--repo", input.pr.repo, "--json", "headRefOid", "--jq", ".headRefOid"], root);
       return out.trim() || null;
     }
     return tryGit(root, "rev-parse", "HEAD")?.trim() ?? null;

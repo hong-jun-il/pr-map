@@ -177,6 +177,14 @@ const stdin = args.includes('--input') ? fs.readFileSync(0, 'utf8') : '';
 fs.appendFileSync(process.env.FAKE_GH_LOG, JSON.stringify({ args, stdin }) + '\\n');
 const head = process.env.FAKE_GH_LATEST || process.env.FAKE_GH_HEAD;
 if (args[0] === 'pr' && args[1] === 'view') {
+  const repoIndex = args.indexOf('--repo');
+  if (repoIndex !== -1 && (!args[2] || args[2].startsWith('-'))) process.exit(1);
+  const repo = repoIndex === -1 ? (process.env.FAKE_GH_DEFAULT_REPO || 'acme/api') : args[repoIndex + 1];
+  if (repo !== 'acme/api') {
+    if (args.includes('--jq')) { console.log('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'); process.exit(0); }
+    console.log(JSON.stringify({ number: 482, url: 'https://github.com/' + repo + '/pull/482', baseRefName: 'main', headRefName: 'other-branch', headRefOid: process.env.FAKE_GH_BASE }));
+    process.exit(0);
+  }
   if (args.includes('--jq')) { console.log(head); process.exit(0); }
   console.log(JSON.stringify({ number: 482, title: '세션 갱신 경합 처리와 실패 시 정리', url: 'https://github.com/acme/api/pull/482', baseRefName: 'main', headRefName: 'feat/refresh-lock', headRefOid: process.env.FAKE_GH_HEAD }));
 } else if (args[0] === 'api' && args.includes('--method')) {
@@ -242,6 +250,16 @@ export function makeFixture(dir?: string): Fixture {
   mkdirSync(bin, { recursive: true });
   writeFileSync(path.join(bin, 'gh'), FAKE_GH);
   chmodSync(path.join(bin, 'gh'), 0o755);
+  // origin의 GitHub 이름은 유지하면서 fetch는 로컬 fixture만 사용한다.
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+  writeFileSync(path.join(bin, 'git'), `#!/bin/sh
+if [ "$1" = fetch ] && [ "$2" = --quiet ] && [ "$3" = origin ]; then
+  shift 3
+  exec "$FAKE_GIT_BIN" fetch --quiet "$FAKE_GIT_ORIGIN" "$@"
+fi
+exec "$FAKE_GIT_BIN" "$@"
+`);
+  chmodSync(path.join(bin, 'git'), 0o755);
   // 테스트가 실제 브라우저를 띄우지 않게 한다.
   for (const name of ['open', 'xdg-open']) {
     writeFileSync(path.join(bin, name), '#!/bin/sh\nexit 0\n');
@@ -254,7 +272,7 @@ export function makeFixture(dir?: string): Fixture {
     base,
     head,
     log,
-    env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, FAKE_GH_LOG: log, FAKE_GH_HEAD: head },
+    env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, FAKE_GIT_BIN: realGit, FAKE_GIT_ORIGIN: root, FAKE_GH_LOG: log, FAKE_GH_HEAD: head, FAKE_GH_BASE: base },
     cleanup: () => rmSync(tmp, { recursive: true, force: true }),
   };
 }

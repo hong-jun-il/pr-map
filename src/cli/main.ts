@@ -114,7 +114,7 @@ function cmdBuild(root: string): void {
 function latestHead(root: string, input: CollectInput): string | null {
   try {
     if (input.pr.number) {
-      const out = run('gh', ['pr', 'view', String(input.pr.number), '--json', 'headRefOid', '--jq', '.headRefOid'], root);
+      const out = run('gh', ['pr', 'view', String(input.pr.number), '--repo', input.pr.repo, '--json', 'headRefOid', '--jq', '.headRefOid'], root);
       return out.trim() || null;
     }
     return tryGit(root, 'rev-parse', 'HEAD')?.trim() ?? null;

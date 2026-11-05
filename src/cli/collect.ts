@@ -50,13 +50,16 @@ interface GhPr {
   headRefOid: string;
 }
 
-function ghPr(root: string, number?: number): GhPr | null {
+function ghPr(root: string, repo: string, number?: number): GhPr | null {
   try {
-    const args = ['pr', 'view', ...(number ? [String(number)] : []), '--json', 'number,title,url,baseRefName,headRefName,headRefOid'];
+    // --repo를 지정하면 PR 번호 또는 브랜치도 명시해야 한다.
+    const selector = number ? String(number) : tryGit(root, 'symbolic-ref', '--quiet', '--short', 'HEAD')?.trim();
+    if (!selector) return null;
+    const args = ['pr', 'view', selector, '--repo', repo, '--json', 'number,title,url,baseRefName,headRefName,headRefOid'];
     return JSON.parse(run('gh', args, root)) as GhPr;
   } catch (err) {
     if (number) {
-      throw new CliError(`PR #${number} 정보를 가져오지 못했습니다. gh 설치·인증과 저장소 권한을 확인하세요.\n${(err as { stderr?: string }).stderr ?? ''}`.trim());
+      throw new CliError(`${repo} PR #${number} 정보를 가져오지 못했습니다. gh 설치·인증과 저장소 권한을 확인하세요.\n${(err as { stderr?: string }).stderr ?? ''}`.trim());
     }
     return null;
   }
@@ -93,7 +96,7 @@ export interface CollectOptions {
 export function collect(cwd: string, opts: CollectOptions): CollectInput {
   const root = repoRoot(cwd);
   const repo = originRepo(root);
-  const gh = opts.base ? null : ghPr(root, opts.pr);
+  const gh = opts.base ? null : ghPr(root, repo, opts.pr);
   const baseRef = opts.base ?? gh?.baseRefName ?? defaultBranch(root);
 
   if (gh) {

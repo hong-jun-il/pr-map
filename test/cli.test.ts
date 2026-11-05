@@ -184,6 +184,18 @@ describe('시안의 예시 PR로 전체 흐름', () => {
     expect(execFileSync('git', ['status', '--porcelain'], { cwd: fx.root, encoding: 'utf8' })).toBe('');
   });
 
+  it.each([[], ['--pr', '482']])('collect: gh 기본 저장소가 달라도 origin의 PR을 조회한다 (%j)', (...args) => {
+    fx.env.FAKE_GH_DEFAULT_REPO = 'upstream/api';
+    execFileSync('git', ['remote', 'add', 'upstream', 'https://github.com/upstream/api.git'], { cwd: fx.root });
+    const result = cli(fx, 'collect', ...args);
+    expect(result.code, result.out).toBe(0);
+    expect(readOut<CollectInput>(fx, 'input.json').pr).toMatchObject({
+      repo: 'acme/api', url: 'https://github.com/acme/api/pull/482', head: fx.head,
+    });
+    const calls = readFileSync(fx.log, 'utf8').trim().split('\n').map((line) => JSON.parse(line) as { args: string[] });
+    expect(calls[0]!.args.slice(0, 5)).toEqual(['pr', 'view', args.length ? '482' : 'feat/refresh-lock', '--repo', 'acme/api']);
+  });
+
   it('PR 없는 브랜치도 --base로 분석한다', () => {
     const r = cli(fx, 'collect', '--base', 'main');
     expect(r.code).toBe(0);
@@ -345,6 +357,23 @@ describe('시안의 예시 PR로 전체 흐름', () => {
       post = calls().find((c) => c.args.includes('PATCH'))!;
       expect(post.args).toContain('repos/acme/api/issues/comments/777');
       expect(calls().some((c) => c.args.includes('POST'))).toBe(false);
+    });
+
+    it('view와 publish: 원격이나 gh 기본값이 바뀌어도 수집한 저장소를 유지한다', () => {
+      fx.env.FAKE_GH_DEFAULT_REPO = 'upstream/api';
+      execFileSync('git', ['remote', 'set-url', 'origin', 'https://github.com/other/api.git'], { cwd: fx.root });
+      writeFileSync(fx.log, '');
+      const viewed = cli(fx, 'view', '--no-open');
+      expect(viewed.code, viewed.out).toBe(0);
+      expect(viewed.out).not.toContain('새 커밋이 있습니다');
+      const published = cli(fx, 'publish');
+      expect(published.code, published.out).toBe(0);
+      expect(published.out).not.toContain('PR head가 분석 뒤 바뀌었습니다');
+      const calls = readFileSync(fx.log, 'utf8').trim().split('\n').map((line) => JSON.parse(line) as { args: string[] });
+      const lookups = calls.filter((c) => c.args[0] === 'pr');
+      expect(lookups).toHaveLength(2);
+      for (const call of lookups) expect(call.args.slice(0, 5)).toEqual(['pr', 'view', '482', '--repo', 'acme/api']);
+      expect(calls.find((c) => c.args.includes('POST'))!.args).toContain('repos/acme/api/issues/482/comments');
     });
 
     it('view: 새 커밋을 감지해도 기존 결과와 커밋을 유지한다 (F14, 시나리오 7)', () => {
