@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pr-map.dev/schema/pr-map.v1.json",
+  "title": "PR Map analysis (AI output)",
+  "type": "object",
+  "required": ["version", "pr", "files", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "pr": {
+      "type": "object",
+      "required": ["repo", "number", "base", "head", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "repo": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" },
+        "number": {
+          "description": "PR 번호. PR 없이 브랜치만 비교하면 null.",
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "base": { "type": "string", "description": "merge-base commit", "pattern": "^[0-9a-f]{7,40}$" },
+        "head": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/file" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 48,
+      "description": "Readable slug. Reuse the previous run's id for the same behavior."
+    },
+    "file": {
+      "type": "object",
+      "required": ["id", "path", "status", "tree"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "path": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["added", "modified", "deleted", "renamed", "reference"] },
+        "oldPath": { "type": "string", "minLength": 1 },
+        "replacedBy": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "tree": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "renamed" } } },
+          "then": { "required": ["oldPath"] },
+          "else": { "not": { "required": ["oldPath"] } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "deleted" } } },
+          "then": { "required": ["replacedBy"] },
+          "else": { "not": { "required": ["replacedBy"] } }
+        }
+      ]
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "text", "change", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "change": { "enum": ["added", "deleted", "modified", "affected", "unchanged"] },
+        "affectedBy": {
+          "type": "object",
+          "required": ["text", "evidence"],
+          "additionalProperties": false,
+          "properties": {
+            "text": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }
+          }
+        },
+        "unverified": { "const": true },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "change": { "const": "affected" } } },
+          "then": { "required": ["affectedBy"] },
+          "else": { "not": { "required": ["affectedBy"] } }
+        },
+        {
+          "if": { "required": ["unverified"] },
+          "then": { "properties": { "evidence": { "maxItems": 0 } } },
+          "else": { "properties": { "evidence": { "minItems": 1 } } }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["side", "path", "start", "end", "role"],
+      "additionalProperties": false,
+      "properties": {
+        "side": { "enum": ["base", "head"] },
+        "path": { "type": "string", "minLength": 1 },
+        "start": { "type": "integer", "minimum": 1 },
+        "end": { "type": "integer", "minimum": 1 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 40 }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to", "kind", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "$ref": "#/$defs/id" },
+        "to": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["calls", "replacedBy"] },
+        "label": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "unverified": { "const": true, "description": "코드에서 확인하지 못한 관계(F06)" }
+      }
+    }
+  }
+}
