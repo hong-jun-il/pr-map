@@ -1,0 +1,31 @@
+name: PR Map
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write # 댓글 게시
+
+concurrency:
+  group: pr-map-${{ github.event.pull_request.number }}
+  cancel-in-progress: true # 연속 푸시하면 이전 실행 취소
+
+jobs:
+  pr-map:
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
+      !contains(github.event.pull_request.labels.*.name, 'no-pr-map')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false # 분석 에이전트가 토큰을 읽지 못하게 한다
+      - uses: hong-jun-il/pr-map@v1
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}

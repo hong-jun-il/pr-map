@@ -173,10 +173,26 @@ const FILES: Record<string, string> = {
 const FAKE_GH = `#!/usr/bin/env node
 const fs = require('fs');
 const args = process.argv.slice(2);
-const stdin = args.includes('--input') ? fs.readFileSync(0, 'utf8') : '';
+if (process.env.FAKE_GH_MISSING) process.exit(127);
+const isSecretSet = args[0] === 'secret' && args[1] === 'set';
+const stdin = args.includes('--input') || isSecretSet ? fs.readFileSync(0, 'utf8') : '';
 fs.appendFileSync(process.env.FAKE_GH_LOG, JSON.stringify({ args, stdin }) + '\\n');
 const head = process.env.FAKE_GH_LATEST || process.env.FAKE_GH_HEAD;
-if (args[0] === 'pr' && args[1] === 'view') {
+const secrets = process.env.FAKE_GH_LOG + '.secrets';
+if (args[0] === '--version') {
+  console.log('gh version 0.0.0');
+} else if (args[0] === 'auth') {
+  process.exit(process.env.FAKE_GH_NO_AUTH ? 1 : 0);
+} else if (isSecretSet) {
+  fs.appendFileSync(secrets, args[2] + '\\n');
+} else if (args[0] === 'secret' && args[1] === 'list') {
+  if (fs.existsSync(secrets)) process.stdout.write(fs.readFileSync(secrets, 'utf8'));
+} else if (args[0] === 'pr' && args[1] === 'list') {
+  if (process.env.FAKE_GH_OPEN_PR) console.log(process.env.FAKE_GH_OPEN_PR);
+} else if (args[0] === 'pr' && args[1] === 'create') {
+  if (process.env.FAKE_GH_PR_CREATE_FAILS) { console.error('pull request create failed'); process.exit(1); }
+  console.log('https://github.com/acme/api/pull/500');
+} else if (args[0] === 'pr' && args[1] === 'view') {
   const repoIndex = args.indexOf('--repo');
   if (repoIndex !== -1 && (!args[2] || args[2].startsWith('-'))) process.exit(1);
   const repo = repoIndex === -1 ? (process.env.FAKE_GH_DEFAULT_REPO || 'acme/api') : args[repoIndex + 1];

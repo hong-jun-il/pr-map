@@ -83,7 +83,7 @@ export function buildViewerData(map: PrMap, input: CollectInput, code: CodeIndex
   };
 }
 
-function assetsDir(): string {
+export function assetsDir(): string {
   // 번들 위치: <skill>/scripts/pr-map.js → 템플릿: <skill>/assets/viewer.html
   return path.join(__dirname, '..', 'assets');
 }
@@ -106,6 +106,6 @@ export function build(root: string, map: PrMap, input: CollectInput, code: CodeI
   const data = buildViewerData(map, input, code);
   writeJson(viewerDataPath(root), data);
   writeViewer(root, data);
-  writeText(commentPath(root), buildComment(data));
+  writeText(commentPath(root), buildComment(data, process.env.PR_MAP_RUN_URL || undefined));
   return data;
 }

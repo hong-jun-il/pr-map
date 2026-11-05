@@ -1,0 +1,99 @@
+name: PR Map
+description: PR의 변경을 파일별 동작 트리와 코드 근거로 분석해 PR 댓글로 게시합니다.
+
+inputs:
+  anthropic-api-key:
+    description: Anthropic API 키. 저장소 시크릿으로 넘깁니다.
+    required: true
+  github-token:
+    description: PR 조회와 댓글 게시에 쓰는 토큰. 분석 에이전트에는 넘기지 않습니다.
+    required: false
+    default: ${{ github.token }}
+  model:
+    description: 분석에 쓸 Claude 모델 또는 별칭
+    required: false
+    default: sonnet
+  max-turns:
+    description: 분석 에이전트의 최대 턴 수
+    required: false
+    default: '80'
+  max-budget-usd:
+    description: 실행 한 번의 비용 상한(USD). 추정치라 실제 청구액과 다를 수 있습니다.
+    required: false
+    default: '5'
+  claude-code-version:
+    description: 설치할 Claude Code 버전
+    required: false
+    default: 2.1.318
+
+runs:
+  using: composite
+  steps:
+    - id: check-key
+      name: API 키 확인
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        if [ -z "$ANTHROPIC_API_KEY" ]; then
+          echo "::error::ANTHROPIC_API_KEY 시크릿이 없습니다. 저장소 Settings > Secrets and variables > Actions에서 등록하세요."
+          exit 1
+        fi
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - id: collect
+      name: 변경 내용 수집
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        GIT_TERMINAL_PROMPT: '0'
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: bash "$GITHUB_ACTION_PATH/action/collect.sh"
+
+    - id: install-claude
+      name: Claude Code 설치
+      if: steps.collect.outputs.skip != 'true'
+      shell: bash
+      env:
+        CLAUDE_CODE_VERSION: ${{ inputs.claude-code-version }}
+      run: npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
+
+    # PR 코드를 읽는 단계다. GitHub 토큰을 넘기지 않는다.
+    - id: analyze
+      name: PR 분석
+      if: steps.collect.outputs.skip != 'true'
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        PR_MAP_MODEL: ${{ inputs.model }}
+        PR_MAP_MAX_TURNS: ${{ inputs.max-turns }}
+        PR_MAP_MAX_BUDGET_USD: ${{ inputs.max-budget-usd }}
+      run: bash "$GITHUB_ACTION_PATH/action/analyze.sh"
+
+    - id: build
+      name: 뷰어와 댓글 빌드
+      if: steps.collect.outputs.skip != 'true'
+      shell: bash
+      env:
+        PR_MAP_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: node "$GITHUB_ACTION_PATH/skill/pr-map/scripts/pr-map.js" build
+
+    - uses: actions/upload-artifact@v4
+      if: steps.collect.outputs.skip != 'true'
+      with:
+        name: pr-map-viewer
+        path: .pr-map/viewer/index.html
+        include-hidden-files: true
+        if-no-files-found: warn
+        retention-days: 14
+
+    - id: publish
+      name: PR 댓글 게시
+      if: steps.collect.outputs.skip != 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: node "$GITHUB_ACTION_PATH/skill/pr-map/scripts/pr-map.js" publish

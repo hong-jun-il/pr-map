@@ -10,10 +10,28 @@ PR의 변경을 파일별 자연어 동작 트리와 연결 관계로 보여주�
 | --- | --- |
 | `/pr-map`, `/pr-map <번호>` | 분석, 검증, 빌드 후 PR 댓글 게시 |
 | `/pr-map view` | 뷰어 열기. 이때 새 커밋이 있는지 확인 |
+| `/pr-map setup` | 자동 실행 워크플로 설치 PR 생성, 시크릿 등록 안내 |
 
 필요한 도구는 Node 20 이상, `git`, `gh`(인증 완료)입니다. 분석은 실행 중인 에이전트의 모델이 하므로 API 키가 필요 없습니다.
 
+`setup`은 `gh` 없이도 진행할 수 있습니다. 이때 PR과 시크릿은 출력된 링크에서 직접 만듭니다. 자동 실행은 GitHub Actions에서 돌기 때문에 저장소 시크릿 `ANTHROPIC_API_KEY`가 필요합니다. 액션 `hong-jun-il/pr-map@v1`이 게시되기 전에는 `setup --install`이 설치를 거부합니다.
+
 결과는 `.pr-map/`에 저장됩니다. 코드 원문이 들어 있어서 `collect`가 이 클론의 `.git/info/exclude`에 등록해 커밋되지 않게 합니다.
+
+### 자동 실행: `action.yml`
+
+설치된 워크플로는 같은 저장소에서 연 PR만 분석합니다. 포크 PR, 초안, Dependabot PR과 `no-pr-map` 라벨이 붙은 PR은 건너뜁니다. 자동 실행은 PR 코드를 Anthropic API로 보내고, 사용량은 등록한 API 키에 청구됩니다.
+
+| 입력 | 기본값 | 설명 |
+| --- | --- | --- |
+| `anthropic-api-key` | 필수 | 저장소 시크릿으로 넘기는 API 키 |
+| `github-token` | `github.token` | PR 조회와 댓글 게시용 토큰 |
+| `model` | `sonnet` | 분석 모델 |
+| `max-turns` | `80` | 에이전트의 최대 턴 수 |
+| `max-budget-usd` | `5` | 실행당 비용 상한(추정치 기준) |
+| `claude-code-version` | `2.1.318` | 설치할 Claude Code 버전 |
+
+PR 코드는 신뢰할 수 없는 입력으로 다룹니다. 분석 단계에는 GitHub 토큰을 넘기지 않고, 네트워크 도구와 저장소의 `.claude` 설정, 훅, MCP를 끕니다. 쓰기는 `.pr-map/`으로 제한합니다. 전체 지도는 실행의 artifact(`pr-map-viewer`)로 14일 동안 보관하고, PR 댓글에 실행 페이지 링크를 넣습니다.
 
 ### 설정: `.pr-map.yml` (선택)
 
@@ -30,9 +48,8 @@ includeTests: true  # 테스트도 지도에 넣기 (기본: 제외)
 ## 범위
 
 - **첫 버전:** 웹 뷰어, 로컬 스킬(`collect`·`validate`·`build`·`view`·`publish`), PR 댓글(Mermaid·접힘 트리·커밋 고정 링크).
-- **호스팅 없음:** 전체 지도는 로컬에서 엽니다. 댓글은 GitHub 권한을 그대로 따르고, 코드 원문은 외부로 올리지 않습니다.
+- **호스팅 없음:** 전체 지도는 로컬이나 Actions artifact로 엽니다. 댓글은 GitHub 권한을 그대로 따르고, PR Map이 코드 원문을 별도 서버에 올리지 않습니다.
 - **언어:** 관계 후보 추출과 구문 강조는 TS/JS 기준입니다. 다른 언어도 분석은 되지만 관계는 에이전트가 코드를 읽어 찾습니다.
-- **다음 단계:** `setup` 마법사와 GitHub Actions 자동 실행, artifact 링크.
 
 ## 개발
 
@@ -48,6 +65,7 @@ npm run demo        # 시안의 예시 PR을 임시 저장소로 만들어 뷰�
 ```text
 spec/            스키마, 예시, validate 규칙 (AI 출력 계약)
 skill/pr-map/    배포물: SKILL.md + 번들
+action.yml       GitHub Actions 액션 (action/의 스크립트를 실행)
 src/cli/         수집, 검증, 빌드, 댓글, 게시
 src/viewer/      React 뷰어
 samples/         시안의 예시 PR 분석 결과

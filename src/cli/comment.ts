@@ -93,7 +93,14 @@ function fileSection(f: ViewerFile, open: boolean, data: ViewerMapData, withTree
   return lines.join('\n');
 }
 
-export function buildComment(data: ViewerMapData): string {
+/** 전체 지도를 여는 방법. Actions 실행이면 결과가 리뷰어의 PC에 없으므로 artifact로 안내한다. */
+function viewerHint(runUrl?: string): string {
+  return runUrl
+    ? `전체 지도는 [실행 페이지](${runUrl})에서 \`pr-map-viewer\` artifact를 받아 압축을 풀고 \`index.html\`로 엽니다. artifact는 14일 동안 보관됩니다.`
+    : '전체 지도는 체크아웃 후 `/pr-map view`로 엽니다.';
+}
+
+export function buildComment(data: ViewerMapData, runUrl?: string): string {
   const { pr, counts: c } = data;
   const changed = data.files.filter((f) => f.status !== 'reference').length;
   const refs = data.files.length - changed;
@@ -110,7 +117,7 @@ export function buildComment(data: ViewerMapData): string {
     const footer = [
       `근거 확인 필요 ${c.unverified}건 · 분석 커밋 \`${head}\` · 미분류 ${c.unclassified}개`,
       '',
-      '<sub>전체 지도는 체크아웃 후 `/pr-map view`로 엽니다. 근거 줄 위치는 커밋에서 검증했지만, 설명의 의미는 자동 검증 대상이 아닙니다. 이 댓글은 분석을 다시 게시할 때 갱신됩니다.</sub>',
+      `<sub>${viewerHint(runUrl)} 근거 줄 위치는 커밋에서 검증했지만, 설명의 의미는 자동 검증 대상이 아닙니다. 이 댓글은 분석을 다시 게시할 때 갱신됩니다.</sub>`,
     ];
     return [
       COMMENT_MARKER,
@@ -134,5 +141,5 @@ export function buildComment(data: ViewerMapData): string {
     const body = compose(n);
     if (body.length <= MAX_COMMENT) return body;
   }
-  return [COMMENT_MARKER, '## PR Map', '', escapeMd(pr.summary), '', `분석 커밋 \`${head}\`. 결과가 너무 길어 전체 지도에서만 볼 수 있습니다.`, ''].join('\n');
+  return [COMMENT_MARKER, '## PR Map', '', escapeMd(pr.summary), '', `분석 커밋 \`${head}\`. 결과가 너무 길어 전체 지도에서만 볼 수 있습니다. ${viewerHint(runUrl)}`, ''].join('\n');
 }
