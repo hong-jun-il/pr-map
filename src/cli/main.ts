@@ -23,6 +23,7 @@ import {
   viewerHtmlPath,
   writeJson,
 } from "./paths";
+import { cmdClean } from "./clean";
 import { cmdSetup } from "./setup";
 import {
   checkRules,
@@ -344,7 +345,8 @@ const USAGE = `사용법: pr-map <명령>
   view [--no-open]                      뷰어를 엽니다
   setup                                 자동 실행 설치 상태와 다음 단계를 보여줍니다
   setup --install [--force]             워크플로 설치 브랜치를 올리고 PR을 만듭니다
-  setup --secret-from-env               환경변수의 API 키를 저장소 시크릿으로 등록합니다`;
+  setup --secret-from-env               환경변수의 API 키를 저장소 시크릿으로 등록합니다
+  clean                                 이 클론의 .pr-map/과 .git/info/exclude 줄을 지웁니다`;
 
 function main(): number {
   const [command, ...rest] = process.argv.slice(2);
@@ -383,6 +385,9 @@ function main(): number {
       return 0;
     case "view":
       cmdView(root, { open: !values["no-open"] });
+      return 0;
+    case "clean":
+      cmdClean(root);
       return 0;
     case "setup":
       return cmdSetup(root, {

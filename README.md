@@ -6,11 +6,12 @@ PR의 변경을 파일별 자연어 동작 트리와 연결 관계로 보여주�
 
 `skill/pr-map` 폴더를 `.claude/skills/pr-map`(저장소) 또는 `~/.claude/skills/pr-map`(개인)에 복사한 뒤, 분석할 저장소에서 실행합니다.
 
-| 명령                        | 동작                                              |
-| --------------------------- | ------------------------------------------------- |
-| `/pr-map`, `/pr-map <번호>` | 분석, 검증, 빌드 후 PR 댓글 게시                  |
-| `/pr-map view`              | 뷰어 열기. 이때 새 커밋이 있는지 확인             |
-| `/pr-map setup`             | 자동 실행 워크플로 설치 PR 생성, 시크릿 등록 안내 |
+| 명령                        | 동작                                               |
+| --------------------------- | -------------------------------------------------- |
+| `/pr-map`, `/pr-map <번호>` | 분석, 검증, 빌드 후 PR 댓글 게시                   |
+| `/pr-map view`              | 뷰어 열기. 이때 새 커밋이 있는지 확인              |
+| `/pr-map setup`             | 자동 실행 워크플로 설치 PR 생성, 시크릿 등록 안내  |
+| `/pr-map clean`             | 이 클론의 `.pr-map/`과 `.git/info/exclude` 줄 삭제 |
 
 필요한 도구는 Node 20 이상, `git`, `gh`(인증 완료)입니다. 분석은 실행 중인 에이전트의 모델이 하므로 API 키가 필요 없습니다.
 
@@ -45,6 +46,14 @@ includeTests: true # 테스트도 지도에 넣기 (기본: 제외)
 
 테스트 코드, 스토리, 테스트 러너 설정(`playwright`·`vitest`·`jest`·`cypress`)은 기본으로 지도에서 빠지고 미분류 목록에 남습니다.
 
+## 제거
+
+1. 저장소마다 `/pr-map clean`을 실행해 코드 원문이 든 `.pr-map/`과 `.git/info/exclude` 줄을 지웁니다. 스킬을 먼저 지우면 이 명령을 쓸 수 없습니다.
+2. 스킬을 지웁니다. `npx skills add`로 설치했다면 `npx skills remove pr-map`, 복사했다면 `.claude/skills/pr-map` 또는 `~/.claude/skills/pr-map` 폴더를 삭제합니다.
+3. 자동 실행을 설치했다면 `.github/workflows/pr-map.yml`을 삭제해 커밋하고, 다른 곳에서 쓰지 않는 키라면 `gh secret delete ANTHROPIC_API_KEY`로 시크릿을 지웁니다.
+
+PR에 달린 댓글은 다른 사람도 보는 기록이라 자동으로 지우지 않습니다. 필요하면 GitHub에서 직접 삭제하세요.
+
 ## 범위
 
 - **첫 버전:** 웹 뷰어, 로컬 스킬(`collect`·`validate`·`build`·`view`·`publish`), PR 댓글(Mermaid·접힘 트리·커밋 고정 링크).
@@ -66,7 +75,7 @@ npm run demo        # 시안의 예시 PR을 임시 저장소로 만들어 뷰�
 spec/            스키마, 예시, validate 규칙 (AI 출력 계약)
 skill/pr-map/    배포물: SKILL.md + 번들
 action.yml       GitHub Actions 액션 (action/의 스크립트를 실행)
-src/cli/         수집, 검증, 빌드, 댓글, 게시
+src/cli/         수집, 검증, 빌드, 댓글, 게시, 삭제
 src/viewer/      React 뷰어
 samples/         시안의 예시 PR 분석 결과
 test/            실제 git 저장소를 만들어 검증하는 테스트

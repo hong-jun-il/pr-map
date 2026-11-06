@@ -1,5 +1,13 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parseImports, parseJsonc, resolveSpec } from "../src/cli/candidates";
@@ -1007,6 +1015,56 @@ describe("시안의 예시 PR로 전체 흐름", () => {
         '"latestHead":"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"',
       );
       expect(html).toContain(`"head":"${fx.head}"`);
+    });
+  });
+
+  describe("clean", () => {
+    const output = () => path.join(fx.root, ".pr-map");
+    const excludeFile = () => path.join(fx.root, ".git/info/exclude");
+
+    it("분석 결과와 exclude 줄만 지우고 다른 내용은 남긴다", () => {
+      writeFileSync(excludeFile(), "# 내 규칙\n*.log\n");
+      writeFileSync(path.join(fx.root, ".pr-map.yml"), "maxFiles: 10\n");
+      expect(cli(fx, "collect", "--base", "main").code).toBe(0);
+      expect(existsSync(output())).toBe(true);
+      expect(readFileSync(excludeFile(), "utf8")).toContain(".pr-map/");
+
+      const r = cli(fx, "clean");
+      expect(r.code).toBe(0);
+      expect(r.out).toContain(".pr-map/을 지웠습니다");
+      expect(existsSync(output())).toBe(false);
+      expect(readFileSync(excludeFile(), "utf8")).toBe("# 내 규칙\n*.log\n");
+      expect(existsSync(path.join(fx.root, ".pr-map.yml"))).toBe(true);
+    });
+
+    it("지울 것이 없어도 성공한다", () => {
+      expect(cli(fx, "clean").code).toBe(0);
+      const r = cli(fx, "clean");
+      expect(r.code).toBe(0);
+      expect(r.out).toContain(".pr-map/이 없습니다");
+      expect(r.out).toContain("지울 줄이 없습니다");
+    });
+
+    it("git이 추적하는 파일이 있으면 지우지 않는다", () => {
+      mkdirSync(output());
+      writeFileSync(path.join(output(), "kept.json"), "{}\n");
+      execFileSync("git", ["add", "-f", ".pr-map/kept.json"], { cwd: fx.root });
+      const r = cli(fx, "clean");
+      expect(r.code).toBe(1);
+      expect(r.out).toContain("추적하는 파일");
+      expect(existsSync(path.join(output(), "kept.json"))).toBe(true);
+    });
+
+    it(".pr-map이 심볼릭 링크면 링크만 지운다", () => {
+      const target = path.join(fx.root, "..", "keep-me");
+      mkdirSync(target);
+      writeFileSync(path.join(target, "file.txt"), "남아야 함\n");
+      symlinkSync(target, output());
+      expect(cli(fx, "clean").code).toBe(0);
+      expect(lstatSync(output(), { throwIfNoEntry: false })).toBeUndefined();
+      expect(readFileSync(path.join(target, "file.txt"), "utf8")).toBe(
+        "남아야 함\n",
+      );
     });
   });
 
