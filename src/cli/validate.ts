@@ -1,6 +1,7 @@
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import schema from '../../spec/pr-map.schema.json';
-import type { ChangedFile, CollectInput, Evidence, MapFile, PrMap, TreeNode } from '../shared/types';
+import type { ChangedFile, CollectInput, Evidence, MapFile, PrMap, TestEvidence, TreeNode } from '../shared/types';
+import { isTestPath } from './classify';
 import { CodeIndex } from './code';
 
 export interface Problem {
@@ -91,9 +92,7 @@ function checkNode(n: TreeNode, path: string, depth: number, file: MapFile, code
     const located = locate(n.evidence, `${path}.evidence`, code, renamed, out, node);
     if (located) {
       const anyChanged = located.some((l) => l.changed);
-      const anyBase = located.some((l) => l.ev.side === 'base');
       if (n.change === 'added') {
-        if (anyBase) out.push({ path, reason: 'added 노드에는 base 근거를 쓸 수 없습니다.', node });
         if (!located.some((l) => l.changed && l.ev.side === 'head')) out.push({ path, reason: 'added 노드의 근거가 head의 + 줄과 겹치지 않습니다.', node });
       } else if (n.change === 'deleted') {
         if (located.some((l) => l.ev.side !== 'base')) out.push({ path, reason: 'deleted 노드의 근거는 모두 base여야 합니다.', node });
@@ -149,14 +148,49 @@ export function checkRules(map: PrMap, input: CollectInput, code: CodeIndex): Pr
     const path = `edges[${i}]`;
     if (!fileIds.has(e.from)) out.push({ path, reason: `from "${e.from}"는 없는 파일 id입니다.` });
     if (!fileIds.has(e.to)) out.push({ path, reason: `to "${e.to}"는 없는 파일 id입니다.` });
-    if (e.kind === 'replacedBy') {
-      const from = fileIds.get(e.from);
-      if (from && (from.status !== 'deleted' || !from.replacedBy?.includes(e.to))) {
-        out.push({ path, reason: 'replacedBy 엣지의 from은 삭제 파일이고 replacedBy에 to가 있어야 합니다.' });
-      }
-    }
+  });
+  const ordered = new Set<string>();
+  map.readingOrder.forEach((step, i) => {
+    const path = `readingOrder[${i}]`;
+    const target = fileIds.get(step.file);
+    if (!target) out.push({ path, reason: `없는 파일 id "${step.file}"입니다.` });
+    else if (target.status === 'reference') out.push({ path, reason: `참고 파일 "${step.file}"는 읽는 순서에 넣을 수 없습니다.` });
+    if (ordered.has(step.file)) out.push({ path, reason: `파일 id "${step.file}"가 중복됩니다.` });
+    ordered.add(step.file);
   });
   return out;
+}
+
+function testProblem(t: TestEvidence, n: TreeNode, changedPaths: Set<string>, code: CodeIndex): string | null {
+  if (n.unverified || n.change === 'unchanged' || n.change === 'deleted') return '바뀐 분기가 아닙니다';
+  if (!isTestPath(t.path) || !changedPaths.has(t.path)) return '이번 PR에서 바뀐 테스트 파일이 아닙니다';
+  if (t.start > t.end) return `start(${t.start})가 end(${t.end})보다 큽니다`;
+  const info = code.lines('head', t.path);
+  if (!info) return `head 커밋에서 읽을 수 없습니다`;
+  if (t.end > info.lineCount) return `end(${t.end})가 줄 수(${info.lineCount})를 넘습니다`;
+  for (let i = t.start; i <= t.end; i++) if (info.changed.has(i)) return null;
+  return '이번 PR에서 바뀐 줄이 아닙니다';
+}
+
+/** 이번 PR에서 바뀐 테스트만 분기에 남긴다. 분기 설명 자체는 건드리지 않는다. */
+export function pruneTests(map: PrMap, input: CollectInput, code: CodeIndex): string[] {
+  const changedPaths = new Set([...input.files, ...input.unclassified].map((f) => f.path));
+  const log: string[] = [];
+  const walk = (nodes: TreeNode[], file: MapFile) => {
+    for (const n of nodes) {
+      if (n.tests) {
+        n.tests = n.tests.filter((t) => {
+          const reason = testProblem(t, n, changedPaths, code);
+          if (reason) log.push(`${file.path}: ${n.id} ← ${t.path} L${t.start}-${t.end} (${reason})`);
+          return !reason;
+        });
+        if (!n.tests.length) delete n.tests;
+      }
+      if (n.children) walk(n.children, file);
+    }
+  };
+  map.files.forEach((f) => walk(f.tree, f));
+  return log;
 }
 
 function evidenceLines(n: TreeNode): Set<string> {
@@ -210,6 +244,7 @@ export function demote(map: PrMap, problems: Problem[]): string[] {
         if (targets.has(`${file.id}\0${n.id}`)) {
           n.evidence = [];
           n.unverified = true;
+          delete n.tests;
           if (n.change === 'affected') {
             n.change = 'unchanged';
             delete n.affectedBy;

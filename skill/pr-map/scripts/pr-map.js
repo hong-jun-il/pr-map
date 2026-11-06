@@ -14842,8 +14842,8 @@ var import_node_fs6 = require("node:fs");
 var import_node_util = require("node:util");
 
 // src/cli/build.ts
-var import_node_fs2 = require("node:fs");
-var import_node_path2 = __toESM(require("node:path"), 1);
+var import_node_fs3 = require("node:fs");
+var import_node_path3 = __toESM(require("node:path"), 1);
 
 // src/cli/comment.ts
 var COMMENT_MARKER = "<!-- pr-map -->";
@@ -14994,13 +14994,13 @@ var import__ = __toESM(require__(), 1);
 // spec/pr-map.schema.json
 var pr_map_schema_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://pr-map.dev/schema/pr-map.v1.json",
+  $id: "https://pr-map.dev/schema/pr-map.v2.json",
   title: "PR Map analysis (AI output)",
   type: "object",
-  required: ["version", "pr", "files", "edges"],
+  required: ["version", "pr", "readingOrder", "files", "edges"],
   additionalProperties: false,
   properties: {
-    version: { const: 1 },
+    version: { const: 2 },
     pr: {
       type: "object",
       required: ["repo", "number", "base", "head", "summary"],
@@ -15015,6 +15015,21 @@ var pr_map_schema_default = {
         base: { type: "string", description: "merge-base commit", pattern: "^[0-9a-f]{7,40}$" },
         head: { type: "string", pattern: "^[0-9a-f]{7,40}$" },
         summary: { type: "string", minLength: 1, maxLength: 200 }
+      }
+    },
+    readingOrder: {
+      description: "\uB9AC\uBDF0\uC5B4\uC5D0\uAC8C \uAD8C\uD558\uB294 \uBCC0\uACBD \uD30C\uC77C \uC77D\uB294 \uC21C\uC11C",
+      type: "array",
+      minItems: 1,
+      maxItems: 5,
+      items: {
+        type: "object",
+        required: ["file", "why"],
+        additionalProperties: false,
+        properties: {
+          file: { $ref: "#/$defs/id" },
+          why: { type: "string", minLength: 1, maxLength: 40 }
+        }
       }
     },
     files: {
@@ -15035,12 +15050,17 @@ var pr_map_schema_default = {
     },
     file: {
       type: "object",
-      required: ["id", "path", "status", "tree"],
+      required: ["id", "path", "status", "layer", "role", "tree"],
       additionalProperties: false,
       properties: {
         id: { $ref: "#/$defs/id" },
         path: { type: "string", minLength: 1 },
         status: { enum: ["added", "modified", "deleted", "renamed", "reference"] },
+        layer: {
+          description: "\uC5ED\uD560\uBCC4 \uB808\uC778. entry: \uC9C4\uC785\uC810, core: \uD575\uC2EC \uB85C\uC9C1, store: \uC800\uC7A5\uC18C\xB7\uC778\uD504\uB77C, ext: \uACF5\uD1B5\xB7\uC678\uBD80",
+          enum: ["entry", "core", "store", "ext"]
+        },
+        role: { description: "\uC774 \uD30C\uC77C\uC774 \uD558\uB294 \uC77C \uD55C \uC904", type: "string", minLength: 1, maxLength: 60 },
         oldPath: { type: "string", minLength: 1 },
         replacedBy: { type: "array", items: { $ref: "#/$defs/id" } },
         tree: { type: "array", items: { $ref: "#/$defs/node" } }
@@ -15077,6 +15097,12 @@ var pr_map_schema_default = {
         },
         unverified: { const: true },
         evidence: { type: "array", items: { $ref: "#/$defs/evidence" } },
+        tests: {
+          description: "\uC774 \uBD84\uAE30\uB97C \uD655\uC778\uD558\uB294, \uC774\uBC88 PR\uC5D0\uC11C \uBC14\uB010 \uD14C\uC2A4\uD2B8",
+          type: "array",
+          minItems: 1,
+          items: { $ref: "#/$defs/testEvidence" }
+        },
         children: { type: "array", items: { $ref: "#/$defs/node" } }
       },
       allOf: [
@@ -15104,20 +15130,114 @@ var pr_map_schema_default = {
         role: { type: "string", minLength: 1, maxLength: 40 }
       }
     },
-    edge: {
+    testEvidence: {
+      description: "head \uCEE4\uBC0B\uC758 \uD14C\uC2A4\uD2B8 \uCF54\uB4DC \uC704\uCE58",
       type: "object",
-      required: ["from", "to", "kind", "label"],
+      required: ["path", "start", "end", "role"],
+      additionalProperties: false,
+      properties: {
+        path: { type: "string", minLength: 1 },
+        start: { type: "integer", minimum: 1 },
+        end: { type: "integer", minimum: 1 },
+        role: { type: "string", minLength: 1, maxLength: 40 }
+      }
+    },
+    edge: {
+      description: "\uD638\uCD9C\xB7\uC0AC\uC6A9 \uAD00\uACC4. \uC0AD\uC81C \uD30C\uC77C\uC758 \uB300\uCCB4 \uAD00\uACC4\uB294 files[].replacedBy\uC5D0\uB9CC \uC4F4\uB2E4.",
+      type: "object",
+      required: ["from", "to", "label"],
       additionalProperties: false,
       properties: {
         from: { $ref: "#/$defs/id" },
         to: { $ref: "#/$defs/id" },
-        kind: { enum: ["calls", "replacedBy"] },
         label: { type: "string", minLength: 1, maxLength: 40 },
         unverified: { const: true, description: "\uCF54\uB4DC\uC5D0\uC11C \uD655\uC778\uD558\uC9C0 \uBABB\uD55C \uAD00\uACC4(F06)" }
       }
     }
   }
 };
+
+// src/cli/classify.ts
+var import_node_fs2 = require("node:fs");
+var import_node_path2 = __toESM(require("node:path"), 1);
+var import_yaml = __toESM(require_dist(), 1);
+var DEFAULT_MAX_FILES = 50;
+var CODE_EXT = new Set(
+  "ts tsx mts cts js jsx mjs cjs vue svelte py go java kt kts rb rs c h cc cpp hpp cs php swift scala sh bash sql".split(" ")
+);
+var DOC_EXT = new Set("md mdx rst txt adoc".split(" "));
+var GENERATED_NAME = /* @__PURE__ */ new Set([
+  "pnpm-lock.yaml",
+  "package-lock.json",
+  "yarn.lock",
+  "bun.lockb",
+  "bun.lock",
+  "composer.lock",
+  "Gemfile.lock",
+  "Cargo.lock",
+  "poetry.lock",
+  "uv.lock",
+  "go.sum"
+]);
+var GENERATED_PATH = /(^|\/)(dist|build|vendor|node_modules|__generated__|\.next)\/|\.min\.(js|css)$|\.(snap|map)$|\.generated\./;
+var TEST_PATH = /(^|\/)(tests?|__tests__|__mocks__|e2e|cypress|\.storybook)\/|\.(test|spec|cy|e2e|stories|story)\.[^/]+$|_test\.[^/]+$|(^|\/)test_[^/]+\.py$|(^|\/)(playwright|vitest|jest|cypress)(\.[^/]+)?\.config\.[^/]+$/;
+var isTestPath = (file) => TEST_PATH.test(file);
+function readConfig(root) {
+  const file = import_node_path2.default.join(root, ".pr-map.yml");
+  const config = { exclude: [], maxFiles: DEFAULT_MAX_FILES };
+  if (!(0, import_node_fs2.existsSync)(file)) return config;
+  const raw = (0, import_yaml.parse)((0, import_node_fs2.readFileSync)(file, "utf8"));
+  if (Array.isArray(raw?.exclude)) config.exclude = raw.exclude.map(String);
+  if (typeof raw?.maxFiles === "number" && raw.maxFiles > 0) config.maxFiles = raw.maxFiles;
+  if (raw?.includeTests === true) config.includeTests = true;
+  return config;
+}
+function globToRegExp(glob) {
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*") {
+      if (glob[i + 1] === "*") {
+        i++;
+        if (glob[i + 1] === "/") {
+          i++;
+          re += "(?:.*/)?";
+        } else re += ".*";
+      } else re += "[^/]*";
+    } else if (c === "?") re += "[^/]";
+    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  }
+  if (glob.endsWith("/")) re += ".*";
+  return new RegExp("^" + re + "$");
+}
+function reasonFor(file, excludes, includeTests) {
+  const name = import_node_path2.default.posix.basename(file.path);
+  const ext = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : "";
+  if (file.binary) return { reason: "\uBC14\uC774\uB108\uB9AC", category: "other" };
+  if (excludes.some((re) => re.test(file.path))) return { reason: ".pr-map.yml \uC81C\uC678", category: "excluded" };
+  if (!includeTests && TEST_PATH.test(file.path)) return { reason: "\uD14C\uC2A4\uD2B8 \xB7 \uAE30\uBCF8 \uC81C\uC678", category: CODE_EXT.has(ext) ? "test" : "fixture" };
+  if (GENERATED_NAME.has(name) || GENERATED_PATH.test(file.path)) return { reason: "\uC790\uB3D9 \uC0DD\uC131 \xB7 \uC81C\uC678 \uADDC\uCE59", category: "generated" };
+  if (DOC_EXT.has(ext)) return { reason: "\uBB38\uC11C", category: "doc" };
+  if (!CODE_EXT.has(ext)) return { reason: "\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uD615\uC2DD", category: "other" };
+  return null;
+}
+function classify(files, config) {
+  const excludes = config.exclude.map(globToRegExp);
+  const kept = [];
+  const unclassified = [];
+  for (const f of files) {
+    const found = reasonFor(f, excludes, config.includeTests === true);
+    if (found) unclassified.push({ ...f, ...found });
+    else kept.push(f);
+  }
+  const ranked = [...kept].sort((a, b) => b.additions + b.deletions - (a.additions + a.deletions) || a.path.localeCompare(b.path));
+  const allowed = new Set(ranked.slice(0, config.maxFiles).map((f) => f.path));
+  const mapped = kept.filter((f) => allowed.has(f.path));
+  for (const f of kept) {
+    if (!allowed.has(f.path)) unclassified.push({ ...f, reason: `\uBD84\uC11D \uC0C1\uD55C ${config.maxFiles}\uAC1C \uCD08\uACFC`, category: "attention" });
+  }
+  return { files: mapped, unclassified };
+}
 
 // src/cli/validate.ts
 var MAX_DEPTH = 4;
@@ -15181,9 +15301,7 @@ function checkNode(n, path7, depth, file, code, renamed, ids, out) {
     const located = locate(n.evidence, `${path7}.evidence`, code, renamed, out, node);
     if (located) {
       const anyChanged = located.some((l) => l.changed);
-      const anyBase = located.some((l) => l.ev.side === "base");
       if (n.change === "added") {
-        if (anyBase) out.push({ path: path7, reason: "added \uB178\uB4DC\uC5D0\uB294 base \uADFC\uAC70\uB97C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.", node });
         if (!located.some((l) => l.changed && l.ev.side === "head")) out.push({ path: path7, reason: "added \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 head\uC758 + \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", node });
       } else if (n.change === "deleted") {
         if (located.some((l) => l.ev.side !== "base")) out.push({ path: path7, reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uB294 \uBAA8\uB450 base\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
@@ -15235,14 +15353,46 @@ function checkRules(map, input, code) {
     const path7 = `edges[${i}]`;
     if (!fileIds.has(e.from)) out.push({ path: path7, reason: `from "${e.from}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
     if (!fileIds.has(e.to)) out.push({ path: path7, reason: `to "${e.to}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
-    if (e.kind === "replacedBy") {
-      const from = fileIds.get(e.from);
-      if (from && (from.status !== "deleted" || !from.replacedBy?.includes(e.to))) {
-        out.push({ path: path7, reason: "replacedBy \uC5E3\uC9C0\uC758 from\uC740 \uC0AD\uC81C \uD30C\uC77C\uC774\uACE0 replacedBy\uC5D0 to\uAC00 \uC788\uC5B4\uC57C \uD569\uB2C8\uB2E4." });
-      }
-    }
+  });
+  const ordered = /* @__PURE__ */ new Set();
+  map.readingOrder.forEach((step, i) => {
+    const path7 = `readingOrder[${i}]`;
+    const target = fileIds.get(step.file);
+    if (!target) out.push({ path: path7, reason: `\uC5C6\uB294 \uD30C\uC77C id "${step.file}"\uC785\uB2C8\uB2E4.` });
+    else if (target.status === "reference") out.push({ path: path7, reason: `\uCC38\uACE0 \uD30C\uC77C "${step.file}"\uB294 \uC77D\uB294 \uC21C\uC11C\uC5D0 \uB123\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` });
+    if (ordered.has(step.file)) out.push({ path: path7, reason: `\uD30C\uC77C id "${step.file}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+    ordered.add(step.file);
   });
   return out;
+}
+function testProblem(t, n, changedPaths, code) {
+  if (n.unverified || n.change === "unchanged" || n.change === "deleted") return "\uBC14\uB010 \uBD84\uAE30\uAC00 \uC544\uB2D9\uB2C8\uB2E4";
+  if (!isTestPath(t.path) || !changedPaths.has(t.path)) return "\uC774\uBC88 PR\uC5D0\uC11C \uBC14\uB010 \uD14C\uC2A4\uD2B8 \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4";
+  if (t.start > t.end) return `start(${t.start})\uAC00 end(${t.end})\uBCF4\uB2E4 \uD07D\uB2C8\uB2E4`;
+  const info = code.lines("head", t.path);
+  if (!info) return `head \uCEE4\uBC0B\uC5D0\uC11C \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4`;
+  if (t.end > info.lineCount) return `end(${t.end})\uAC00 \uC904 \uC218(${info.lineCount})\uB97C \uB118\uC2B5\uB2C8\uB2E4`;
+  for (let i = t.start; i <= t.end; i++) if (info.changed.has(i)) return null;
+  return "\uC774\uBC88 PR\uC5D0\uC11C \uBC14\uB010 \uC904\uC774 \uC544\uB2D9\uB2C8\uB2E4";
+}
+function pruneTests(map, input, code) {
+  const changedPaths = new Set([...input.files, ...input.unclassified].map((f) => f.path));
+  const log = [];
+  const walk = (nodes, file) => {
+    for (const n of nodes) {
+      if (n.tests) {
+        n.tests = n.tests.filter((t) => {
+          const reason = testProblem(t, n, changedPaths, code);
+          if (reason) log.push(`${file.path}: ${n.id} \u2190 ${t.path} L${t.start}-${t.end} (${reason})`);
+          return !reason;
+        });
+        if (!n.tests.length) delete n.tests;
+      }
+      if (n.children) walk(n.children, file);
+    }
+  };
+  map.files.forEach((f) => walk(f.tree, f));
+  return log;
 }
 function evidenceLines(n) {
   const set = /* @__PURE__ */ new Set();
@@ -15290,6 +15440,7 @@ function demote(map, problems) {
         if (targets.has(`${file.id}\0${n.id}`)) {
           n.evidence = [];
           n.unverified = true;
+          delete n.tests;
           if (n.change === "affected") {
             n.change = "unchanged";
             delete n.affectedBy;
@@ -15317,13 +15468,17 @@ function countUnverified(map) {
 
 // src/cli/build.ts
 var DATA_SLOT = "/*__PR_MAP_DATA__*/null";
-function depthOf(nodes) {
-  return nodes.reduce((max, n) => Math.max(max, 1 + depthOf(n.children ?? [])), 0);
-}
+var LINKED_TEST = "\uBD84\uAE30\uC5D0 \uC5F0\uACB0\uB428";
 function collectEvidence(nodes, out) {
   for (const n of nodes) {
     out.push(...n.evidence, ...n.affectedBy?.evidence ?? []);
     if (n.children) collectEvidence(n.children, out);
+  }
+}
+function collectTests(nodes, out) {
+  for (const n of nodes) {
+    if (n.tests) out.push(...n.tests);
+    if (n.children) collectTests(n.children, out);
   }
 }
 function callersText(f, candidates) {
@@ -15343,7 +15498,6 @@ function buildViewerData(map, input, code) {
       dir: f.path.slice(0, slash + 1),
       additions: c?.additions ?? 0,
       deletions: c?.deletions ?? 0,
-      width: depthOf(f.tree) >= 3 ? 410 : 340,
       replacedByNames: (f.replacedBy ?? []).map((id) => {
         const target = byId.get(id);
         return target ? target.path.slice(target.path.lastIndexOf("/") + 1) : id;
@@ -15361,10 +15515,18 @@ function buildViewerData(map, input, code) {
   const evidence = [];
   map.files.forEach((f) => collectEvidence(f.tree, evidence));
   evidence.forEach((ev) => add(ev.side, ev.path));
+  const tests = [];
+  map.files.forEach((f) => collectTests(f.tree, tests));
+  tests.forEach((t) => add("head", t.path));
+  const linkedTests = new Set(tests.map((t) => t.path));
   const mapped = new Set(map.files.map((f) => f.path));
   const unclassified = [
-    ...input.unclassified,
-    ...input.files.filter((f) => !mapped.has(f.path)).map((f) => ({ ...f, reason: "\uBD84\uC11D \uACB0\uACFC \uC5C6\uC74C" }))
+    ...input.unclassified.map((f) => f.category === "test" ? { ...f, reason: linkedTests.has(f.path) ? LINKED_TEST : "\uC5F0\uACB0\uB41C \uBD84\uAE30 \uC5C6\uC74C" } : f),
+    ...input.files.filter((f) => !mapped.has(f.path)).map((f) => ({ ...f, reason: "\uBD84\uC11D \uACB0\uACFC \uC5C6\uC74C", category: "attention" }))
+  ];
+  const edges = [
+    ...map.edges.map((e) => ({ ...e, kind: "calls" })),
+    ...map.files.flatMap((f) => (f.replacedBy ?? []).map((to) => ({ from: f.id, to, label: "\uB300\uCCB4\uB428", kind: "replacedBy" })))
   ];
   return {
     status: "ready",
@@ -15375,8 +15537,9 @@ function buildViewerData(map, input, code) {
       unclassified: unclassified.length,
       unverified: countUnverified(map)
     },
+    readingOrder: map.readingOrder,
     files,
-    edges: map.edges,
+    edges,
     unclassified,
     codeIndex,
     code: entries,
@@ -15385,9 +15548,9 @@ function buildViewerData(map, input, code) {
   };
 }
 function assetsDir() {
-  return import_node_path2.default.join(__dirname, "..", "assets");
+  return import_node_path3.default.join(__dirname, "..", "assets");
 }
-function renderHtml(data, template = (0, import_node_fs2.readFileSync)(import_node_path2.default.join(assetsDir(), "viewer.html"), "utf8")) {
+function renderHtml(data, template = (0, import_node_fs3.readFileSync)(import_node_path3.default.join(assetsDir(), "viewer.html"), "utf8")) {
   if (!template.includes(DATA_SLOT)) throw new Error("viewer.html\uC5D0 \uB370\uC774\uD130 \uC790\uB9AC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
   const json = JSON.stringify(data).replace(/[<\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
   return template.replace(DATA_SLOT, () => json);
@@ -15576,7 +15739,7 @@ var import_node_fs4 = require("node:fs");
 var import_node_path5 = __toESM(require("node:path"), 1);
 
 // src/cli/candidates.ts
-var import_node_path3 = __toESM(require("node:path"), 1);
+var import_node_path4 = __toESM(require("node:path"), 1);
 var TSJS = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 var EXTS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
 var MAX_SCANNED_PER_FILE = 200;
@@ -15622,7 +15785,7 @@ function readAliases(root, head) {
     const baseUrl = cfg.compilerOptions?.baseUrl ?? ".";
     return Object.entries(cfg.compilerOptions?.paths ?? {}).map(([pattern, targets]) => {
       const [prefix = "", suffix = ""] = pattern.split("*");
-      return { prefix, suffix, targets: targets.map((t) => import_node_path3.default.posix.join(baseUrl, t)) };
+      return { prefix, suffix, targets: targets.map((t) => import_node_path4.default.posix.join(baseUrl, t)) };
     });
   } catch {
     return [];
@@ -15630,7 +15793,7 @@ function readAliases(root, head) {
 }
 function resolveSpec(spec, from, tree, aliases) {
   const bases = [];
-  if (spec.startsWith(".")) bases.push(import_node_path3.default.posix.join(import_node_path3.default.posix.dirname(from), spec));
+  if (spec.startsWith(".")) bases.push(import_node_path4.default.posix.join(import_node_path4.default.posix.dirname(from), spec));
   else {
     for (const a of aliases) {
       if (spec.startsWith(a.prefix) && spec.endsWith(a.suffix) && spec.length >= a.prefix.length + a.suffix.length) {
@@ -15677,8 +15840,8 @@ function collectCandidates(root, base, head, files) {
   }
   const targetSet = new Set(targets.map((f) => f.path));
   for (const f of targets) {
-    const name = import_node_path3.default.posix.basename(f.path).replace(TSJS, "");
-    const stem = name === "index" ? import_node_path3.default.posix.basename(import_node_path3.default.posix.dirname(f.path)) : name;
+    const name = import_node_path4.default.posix.basename(f.path).replace(TSJS, "");
+    const stem = name === "index" ? import_node_path4.default.posix.basename(import_node_path4.default.posix.dirname(f.path)) : name;
     const grep = tryGit(root, "grep", "-l", "-F", "-e", stem, head, "--", "*.ts", "*.tsx", "*.mts", "*.cts", "*.js", "*.jsx", "*.mjs", "*.cjs");
     if (!grep) continue;
     const hits = grep.split("\n").filter(Boolean).map((l) => l.slice(l.indexOf(":") + 1)).slice(0, MAX_SCANNED_PER_FILE);
@@ -15692,87 +15855,6 @@ function collectCandidates(root, base, head, files) {
     }
   }
   return [...seen.values()].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
-}
-
-// src/cli/classify.ts
-var import_node_fs3 = require("node:fs");
-var import_node_path4 = __toESM(require("node:path"), 1);
-var import_yaml = __toESM(require_dist(), 1);
-var DEFAULT_MAX_FILES = 50;
-var CODE_EXT = new Set(
-  "ts tsx mts cts js jsx mjs cjs vue svelte py go java kt kts rb rs c h cc cpp hpp cs php swift scala sh bash sql".split(" ")
-);
-var DOC_EXT = new Set("md mdx rst txt adoc".split(" "));
-var GENERATED_NAME = /* @__PURE__ */ new Set([
-  "pnpm-lock.yaml",
-  "package-lock.json",
-  "yarn.lock",
-  "bun.lockb",
-  "bun.lock",
-  "composer.lock",
-  "Gemfile.lock",
-  "Cargo.lock",
-  "poetry.lock",
-  "uv.lock",
-  "go.sum"
-]);
-var GENERATED_PATH = /(^|\/)(dist|build|vendor|node_modules|__generated__|\.next)\/|\.min\.(js|css)$|\.(snap|map)$|\.generated\./;
-var TEST_PATH = /(^|\/)(tests?|__tests__|__mocks__|e2e|cypress|\.storybook)\/|\.(test|spec|cy|e2e|stories|story)\.[^/]+$|_test\.[^/]+$|(^|\/)test_[^/]+\.py$|(^|\/)(playwright|vitest|jest|cypress)(\.[^/]+)?\.config\.[^/]+$/;
-function readConfig(root) {
-  const file = import_node_path4.default.join(root, ".pr-map.yml");
-  const config = { exclude: [], maxFiles: DEFAULT_MAX_FILES };
-  if (!(0, import_node_fs3.existsSync)(file)) return config;
-  const raw = (0, import_yaml.parse)((0, import_node_fs3.readFileSync)(file, "utf8"));
-  if (Array.isArray(raw?.exclude)) config.exclude = raw.exclude.map(String);
-  if (typeof raw?.maxFiles === "number" && raw.maxFiles > 0) config.maxFiles = raw.maxFiles;
-  if (raw?.includeTests === true) config.includeTests = true;
-  return config;
-}
-function globToRegExp(glob) {
-  let re = "";
-  for (let i = 0; i < glob.length; i++) {
-    const c = glob[i];
-    if (c === "*") {
-      if (glob[i + 1] === "*") {
-        i++;
-        if (glob[i + 1] === "/") {
-          i++;
-          re += "(?:.*/)?";
-        } else re += ".*";
-      } else re += "[^/]*";
-    } else if (c === "?") re += "[^/]";
-    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-  }
-  if (glob.endsWith("/")) re += ".*";
-  return new RegExp("^" + re + "$");
-}
-function reasonFor(file, excludes, includeTests) {
-  const name = import_node_path4.default.posix.basename(file.path);
-  const ext = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : "";
-  if (file.binary) return "\uBC14\uC774\uB108\uB9AC";
-  if (excludes.some((re) => re.test(file.path))) return ".pr-map.yml \uC81C\uC678";
-  if (!includeTests && TEST_PATH.test(file.path)) return "\uD14C\uC2A4\uD2B8 \xB7 \uAE30\uBCF8 \uC81C\uC678";
-  if (GENERATED_NAME.has(name) || GENERATED_PATH.test(file.path)) return "\uC790\uB3D9 \uC0DD\uC131 \xB7 \uC81C\uC678 \uADDC\uCE59";
-  if (DOC_EXT.has(ext)) return "\uBB38\uC11C";
-  if (!CODE_EXT.has(ext)) return "\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uD615\uC2DD";
-  return null;
-}
-function classify(files, config) {
-  const excludes = config.exclude.map(globToRegExp);
-  const kept = [];
-  const unclassified = [];
-  for (const f of files) {
-    const reason = reasonFor(f, excludes, config.includeTests === true);
-    if (reason) unclassified.push({ ...f, reason });
-    else kept.push(f);
-  }
-  const ranked = [...kept].sort((a, b) => b.additions + b.deletions - (a.additions + a.deletions) || a.path.localeCompare(b.path));
-  const allowed = new Set(ranked.slice(0, config.maxFiles).map((f) => f.path));
-  const mapped = kept.filter((f) => allowed.has(f.path));
-  for (const f of kept) {
-    if (!allowed.has(f.path)) unclassified.push({ ...f, reason: `\uBD84\uC11D \uC0C1\uD55C ${config.maxFiles}\uAC1C \uCD08\uACFC` });
-  }
-  return { files: mapped, unclassified };
 }
 
 // src/cli/collect.ts
@@ -16163,6 +16245,7 @@ function cmdValidate(root) {
   const code = codeIndexFor(root, input);
   const remapped = stabilizeIds(map, input.previous);
   remapped.forEach((l) => console.log(`id \uBCF4\uC815: ${l}`));
+  pruneTests(map, input, code).forEach((l) => console.log(`\uD14C\uC2A4\uD2B8 \uC5F0\uACB0 \uC81C\uAC70: ${l}`));
   let problems = checkRules(map, input, code);
   if (problems.length) {
     state.attempts += 1;
@@ -16223,7 +16306,7 @@ function openInBrowser(file) {
 function cmdView(root, opts) {
   const ready = readJsonIfExists(viewerDataPath(root));
   const input = readJsonIfExists(inputPath(root));
-  const current = !!ready && !!input && ready.pr.head === input.pr.head;
+  const current = !!ready && !!input && ready.pr.head === input.pr.head && "readingOrder" in ready;
   let data;
   if (current) {
     const latest = latestHead(root, input);

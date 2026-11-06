@@ -151,6 +151,26 @@ const G = `
   }
 `;
 
+const T = `
+  import { describe, it, expect } from 'vitest'
+  import { getFreshSession } from '../session-refresh'
+
+  describe('getFreshSession', () => {
+    it('만료 전이면 그대로 반환', async () => {
+      expect(await getFreshSession('fresh')).toBeTruthy()
+    })
++
++   it('동시 요청 → 갱신 한 번', async () => {
++     await Promise.all([getFreshSession('a'), getFreshSession('a')])
++     expect(refreshCount()).toBe(1)
++   })
++
++   it('갱신 거부 → 세션 삭제', async () => {
++     await expect(getFreshSession('rejected')).rejects.toThrow()
++   })
+  })
+`;
+
 function split(src: string): { base: string | null; head: string | null } {
   const lines = src.replace(/^\n|\n$/g, '').split('\n');
   const pick = (skip: string) => lines.filter((l) => l[0] !== skip).map((l) => l.slice(2)).join('\n') + '\n';
@@ -168,6 +188,7 @@ const FILES: Record<string, string> = {
   'src/auth/legacy-refresh.ts': E,
   'src/reports/csv-export.ts': F,
   'src/routes.ts': R,
+  'src/auth/__tests__/session-refresh.test.ts': T,
 };
 
 const FAKE_GH = `#!/usr/bin/env node
@@ -243,6 +264,7 @@ export function makeFixture(dir?: string): Fixture {
   const gParts = split(G);
   for (const [p, s] of parts) if (s.base !== null) write(p, s.base);
   write('src/auth/token-store.ts', gParts.base!);
+  write('src/auth/__tests__/old-unrelated.test.ts', "it('예전 테스트', () => {})\n");
   write('pnpm-lock.yaml', 'lockfileVersion: 9\n');
   write('docs/auth/session.md', '# 세션\n');
   write('infra/redis.conf', 'maxmemory 1gb\n');

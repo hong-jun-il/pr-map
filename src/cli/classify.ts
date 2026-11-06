@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import type { ChangedFile, UnclassifiedFile } from '../shared/types';
+import type { ChangedFile, UnclassifiedCategory, UnclassifiedFile } from '../shared/types';
 
 export const DEFAULT_MAX_FILES = 50;
 
@@ -22,6 +22,8 @@ const GENERATED_NAME = new Set([
 const GENERATED_PATH = /(^|\/)(dist|build|vendor|node_modules|__generated__|\.next)\/|\.min\.(js|css)$|\.(snap|map)$|\.generated\./;
 // 테스트 코드와 그 지원 파일(스토리, 러너 설정). 제품 동작 지도를 복잡하게 만들므로 기본으로 뺀다.
 const TEST_PATH = /(^|\/)(tests?|__tests__|__mocks__|e2e|cypress|\.storybook)\/|\.(test|spec|cy|e2e|stories|story)\.[^/]+$|_test\.[^/]+$|(^|\/)test_[^/]+\.py$|(^|\/)(playwright|vitest|jest|cypress)(\.[^/]+)?\.config\.[^/]+$/;
+
+export const isTestPath = (file: string): boolean => TEST_PATH.test(file);
 
 export function readConfig(root: string): PrMapConfig {
   const file = path.join(root, '.pr-map.yml');
@@ -54,15 +56,15 @@ export function globToRegExp(glob: string): RegExp {
   return new RegExp('^' + re + '$');
 }
 
-function reasonFor(file: ChangedFile, excludes: RegExp[], includeTests: boolean): string | null {
+function reasonFor(file: ChangedFile, excludes: RegExp[], includeTests: boolean): { reason: string; category: UnclassifiedCategory } | null {
   const name = path.posix.basename(file.path);
   const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
-  if (file.binary) return '바이너리';
-  if (excludes.some((re) => re.test(file.path))) return '.pr-map.yml 제외';
-  if (!includeTests && TEST_PATH.test(file.path)) return '테스트 · 기본 제외';
-  if (GENERATED_NAME.has(name) || GENERATED_PATH.test(file.path)) return '자동 생성 · 제외 규칙';
-  if (DOC_EXT.has(ext)) return '문서';
-  if (!CODE_EXT.has(ext)) return '지원하지 않는 형식';
+  if (file.binary) return { reason: '바이너리', category: 'other' };
+  if (excludes.some((re) => re.test(file.path))) return { reason: '.pr-map.yml 제외', category: 'excluded' };
+  if (!includeTests && TEST_PATH.test(file.path)) return { reason: '테스트 · 기본 제외', category: CODE_EXT.has(ext) ? 'test' : 'fixture' };
+  if (GENERATED_NAME.has(name) || GENERATED_PATH.test(file.path)) return { reason: '자동 생성 · 제외 규칙', category: 'generated' };
+  if (DOC_EXT.has(ext)) return { reason: '문서', category: 'doc' };
+  if (!CODE_EXT.has(ext)) return { reason: '지원하지 않는 형식', category: 'other' };
   return null;
 }
 
@@ -72,15 +74,15 @@ export function classify(files: ChangedFile[], config: PrMapConfig): { files: Ch
   const kept: ChangedFile[] = [];
   const unclassified: UnclassifiedFile[] = [];
   for (const f of files) {
-    const reason = reasonFor(f, excludes, config.includeTests === true);
-    if (reason) unclassified.push({ ...f, reason });
+    const found = reasonFor(f, excludes, config.includeTests === true);
+    if (found) unclassified.push({ ...f, ...found });
     else kept.push(f);
   }
   const ranked = [...kept].sort((a, b) => b.additions + b.deletions - (a.additions + a.deletions) || a.path.localeCompare(b.path));
   const allowed = new Set(ranked.slice(0, config.maxFiles).map((f) => f.path));
   const mapped = kept.filter((f) => allowed.has(f.path));
   for (const f of kept) {
-    if (!allowed.has(f.path)) unclassified.push({ ...f, reason: `분석 상한 ${config.maxFiles}개 초과` });
+    if (!allowed.has(f.path)) unclassified.push({ ...f, reason: `분석 상한 ${config.maxFiles}개 초과`, category: 'attention' });
   }
   return { files: mapped, unclassified };
 }

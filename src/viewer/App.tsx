@@ -1,31 +1,23 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { ViewerData, ViewerMapData } from '../shared/types';
-import { EvidencePanel } from './EvidencePanel';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import type { UnclassifiedFile, ViewerData, ViewerMapData } from '../shared/types';
 import { FileBox } from './FileBox';
-import { autoLayout, edgeLine, type Positions } from './layout';
-import { fileOfEvidence, indexLines, rerunCommand, storageKey } from './model';
+import { FilePanel, type Draft } from './FilePanel';
+import { buildLanes, edgeGeometry, flattenTree, groupUnclassified, type LaneLayout, type Rect } from './lanes';
+import { fileOfEvidence, nodeEvidence, rerunCommand, storageKey } from './model';
 
-interface View {
-  x: number;
-  y: number;
-  z: number;
-}
-
-type Drag =
-  | { type: 'box'; id: string; sx: number; sy: number; ox: number; oy: number }
-  | { type: 'pan'; sx: number; sy: number; ox: number; oy: number }
-  | { type: 'split' };
-
-interface Saved {
-  pos?: Positions;
-  toggled?: string[];
-}
-
-function loadSaved(key: string): Saved {
+function loadJson<T>(key: string, fallback: T): T {
   try {
-    return (JSON.parse(localStorage.getItem(key) ?? 'null') as Saved | null) ?? {};
+    return (JSON.parse(localStorage.getItem(key) ?? 'null') as T | null) ?? fallback;
   } catch {
-    return {};
+    return fallback;
+  }
+}
+
+function saveJson(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // 저장소를 못 쓰는 환경에서는 이번 세션에서만 유지한다.
   }
 }
 
@@ -56,266 +48,402 @@ function useCopy() {
   return { copied, copy };
 }
 
-// 파일이 많은 PR도 전체 보기에 다 들어오도록 낮게 잡는다.
-const MIN_ZOOM = 0.12;
-// 이보다 작으면 글자를 읽을 수 없어 강조된 연결의 라벨만 남긴다.
-const LABEL_MIN_ZOOM = 0.3;
+const LINKED_TEST = '분기에 연결됨';
 
-const estimateHeight = (rows: number) => 70 + rows * 26;
+const diffText = (u: UnclassifiedFile) => (u.binary ? '변경' : [u.additions ? `+${u.additions}` : '', u.deletions ? `−${u.deletions}` : ''].filter(Boolean).join(' '));
+
+const joinNote = (...parts: string[]) => parts.filter(Boolean).join(' · ');
+
+function Unclassified({ data }: { data: ViewerMapData }) {
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const { pr } = data;
+  const { attention, groups } = useMemo(() => groupUnclassified(data.unclassified), [data]);
+  const linkedNodes = useMemo(() => data.files.reduce((a, f) => a + flattenTree(f.id, f.tree).filter((r) => r.node.tests?.length).length, 0), [data]);
+  const href = (u: UnclassifiedFile) => `https://github.com/${pr.repo}/blob/${u.status === 'deleted' ? pr.base : pr.head}/${u.path.split('/').map(encodeURIComponent).join('/')}`;
+  const link = { target: '_blank', rel: 'noopener noreferrer', onClick: (e: ReactMouseEvent) => e.stopPropagation() };
+  return (
+    <div className="lane lane-unc">
+      <div className="lane-head">
+        <span className="lane-title">미분류</span>
+        <span className="lane-count">{data.unclassified.length}</span>
+        <span className="lane-sub">지도 밖</span>
+      </div>
+      {attention.length > 0 && (
+        <div className="unc-attention">
+          <span className="unc-attention-title">직접 확인 필요 {attention.length}</span>
+          {attention.map((u) => (
+            <a key={u.path} className="unc-attention-item" href={href(u)} title={u.path} {...link}>
+              <span className="unc-path"><bdi>{u.path}</bdi></span>
+              <span className="unc-reason">{joinNote(u.reason, diffText(u))}</span>
+            </a>
+          ))}
+        </div>
+      )}
+      {groups.map((g) => {
+        const isOpen = !!open[g.key];
+        const linkedFiles = g.key === 'test' ? g.items.filter((u) => u.reason === LINKED_TEST).length : 0;
+        return (
+          <div key={g.key} className="unc-group">
+            <button
+              className="unc-group-toggle"
+              aria-expanded={isOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen((o) => ({ ...o, [g.key]: !o[g.key] }));
+              }}
+            >
+              <span className="unc-group-chev">{isOpen ? '▼' : '▶'}</span>
+              <span className="unc-group-label">{g.label}</span>
+              <span className="unc-group-count">{g.items.length}</span>
+            </button>
+            {linkedFiles > 0 && <span className="unc-group-sub">{linkedFiles}개가 분기 {linkedNodes}개에 연결됨</span>}
+            {isOpen && (
+              <div className="unc-group-items">
+                {g.items.map((u) => (
+                  <a key={u.path} className="unc-item" href={href(u)} title={u.path} {...link}>
+                    <span className="unc-item-name">{u.path.slice(u.path.lastIndexOf('/') + 1)}</span>
+                    <span className="unc-item-note">{joinNote(diffText(u), g.key === 'test' || g.key === 'other' ? u.reason : '')}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const MIN_FIT = 0.45;
+const MIN_ZOOM = 0.4;
+const MAX_ZOOM = 1.6;
+const DEFAULT_PANEL = 440;
+const KEY_CODES: Record<string, string> = { KeyJ: 'j', KeyK: 'k', KeyN: 'n', KeyP: 'p', KeyX: 'x', KeyU: 'u' };
+
+type Drag = { type: 'pan'; sx: number; sy: number; ox: number; oy: number } | { type: 'split' };
 
 function MapScreen({ data }: { data: ViewerMapData }) {
-  const key = storageKey(data);
-  const saved = useMemo(() => loadSaved(key), [key]);
-  const { lines, defaultCollapsed } = useMemo(() => indexLines(data.files), [data]);
+  const { pr, counts } = data;
+  const reviewedKey = storageKey('reviewed', data);
+  const draftsKey = storageKey('drafts', data);
   const fileById = useMemo(() => new Map(data.files.map((f) => [f.id, f])), [data]);
-  const stale = !!data.latestHead && data.latestHead !== data.pr.head;
-
-  const [sizes, setSizes] = useState<Record<string, number>>({});
-  const [pos, setPos] = useState<Positions>(() => {
-    const estimated = Object.fromEntries(data.files.map((f) => [f.id, estimateHeight(Object.keys(lines).filter((k) => lines[k]!.fileId === f.id).length)]));
-    return { ...autoLayout(data.files, data.edges, estimated), ...(saved.pos ?? {}) };
-  });
-  const [toggled, setToggled] = useState<string[]>(saved.toggled ?? []);
-  const [view, setView] = useState<View>({ x: 0, y: 0, z: 1 });
-  const [hover, setHover] = useState<string | null>(null);
-  const [pinned, setPinned] = useState<string | null>(null);
-  const [openEv, setOpenEv] = useState<Record<string, number[]>>({});
-  const [wideEv, setWideEv] = useState<Record<string, boolean>>({});
-  const [panelPct, setPanelPct] = useState(36);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [panning, setPanning] = useState(false);
-  const [flash, setFlash] = useState<string | null>(null);
-  const [uncOpen, setUncOpen] = useState(false);
-  const [showRefs, setShowRefs] = useState(true);
+  const stale = !!data.latestHead && data.latestHead !== pr.head;
   const { copied, copy } = useCopy();
 
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const worldRef = useRef<HTMLDivElement>(null);
+  const [layout, setLayout] = useState<LaneLayout>('status');
+  const [sel, setSel] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
+  const [cur, setCur] = useState<string | null>(null);
+  const [openRows, setOpenRows] = useState<string[]>([]);
+  const [openEvidence, setOpenEvidence] = useState<Record<string, number[]>>({});
+  const [showAll, setShowAll] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [panelW, setPanelW] = useState(DEFAULT_PANEL);
+  const [panning, setPanning] = useState(false);
+  const [splitting, setSplitting] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [unverifiedAt, setUnverifiedAt] = useState(-1);
+  const [reviewed, setReviewed] = useState<Record<string, boolean>>(() => loadJson(reviewedKey, {}));
+  const [drafts, setDrafts] = useState<Draft[]>(() => loadJson(draftsKey, []));
+  const [composer, setComposer] = useState<{ key: string; text: string } | null>(null);
+  const [rects, setRects] = useState<Record<string, Rect>>({});
+  const [nat, setNat] = useState({ w: 1500, h: 900 });
+
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
-  const hoverTimer = useRef<number>();
+  const panMoved = useRef(false);
+  const manual = useRef(false);
+  const rectKey = useRef('');
   const flashTimer = useRef<number>();
-  const interacted = useRef(false);
-  const arranged = useRef(!!saved.pos && data.files.every((f) => saved.pos![f.id]));
+  const pendingScroll = useRef<{ left: number; top: number } | null>(null);
+  const natRef = useRef(nat);
+  natRef.current = nat;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
 
-  // 최신 값을 전역 이벤트에서 읽기 위한 참조
-  const latest = useRef({ view, pos, toggled, sizes });
-  latest.current = { view, pos, toggled, sizes };
+  const lanes = useMemo(() => buildLanes(data.files, data.edges, layout), [data, layout]);
+  const fileOrder = useMemo(() => lanes.flatMap((l) => l.files.map((f) => f.id)), [lanes]);
+  const rowKeys = useMemo(() => {
+    const f = sel ? fileById.get(sel) : null;
+    return f ? flattenTree(f.id, f.tree).map((r) => r.key) : [];
+  }, [sel, fileById]);
+  const unverified = useMemo(() => {
+    const list = data.files.flatMap((f) => flattenTree(f.id, f.tree).filter((r) => r.node.unverified).map((r) => ({ file: f.id, key: r.key })));
+    return list.sort((a, b) => fileOrder.indexOf(a.file) - fileOrder.indexOf(b.file));
+  }, [data, fileOrder]);
 
-  const visibleFiles = useMemo(() => (showRefs ? data.files : data.files.filter((f) => f.status !== 'reference')), [data, showRefs]);
-  const visibleRef = useRef(visibleFiles);
-  visibleRef.current = visibleFiles;
-
-  const save = useCallback(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify({ pos: latest.current.pos, toggled: latest.current.toggled }));
-    } catch {
-      // 저장소를 못 쓰는 환경에서는 이번 세션에서만 유지한다.
-    }
-  }, [key]);
-
-  const fit = useCallback((target?: Positions) => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const r = c.getBoundingClientRect();
-    if (r.width < 200 || r.height < 150) return;
-    const p = target ?? latest.current.pos;
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const f of visibleRef.current) {
-      const at = p[f.id];
-      if (!at) continue;
-      x0 = Math.min(x0, at.x);
-      y0 = Math.min(y0, at.y);
-      x1 = Math.max(x1, at.x + f.width);
-      y1 = Math.max(y1, at.y + (latest.current.sizes[f.id] ?? 220));
-    }
-    if (!isFinite(x0)) return;
-    // 위쪽은 범례와 미분류 패널, 아래쪽은 도구 막대 자리다.
-    const pad = 48, top = 88, bot = 64;
-    const availH = r.height - top - bot;
-    const z = Math.max(MIN_ZOOM, Math.min(1.1, (r.width - pad * 2) / (x1 - x0), availH / (y1 - y0)));
-    setView({ z, x: (r.width - (x1 - x0) * z) / 2 - x0 * z, y: top + (availH - (y1 - y0) * z) / 2 - y0 * z });
+  const fit = useCallback(() => {
+    const o = outerRef.current;
+    if (!o || o.clientWidth < 100) return;
+    const next = Math.max(MIN_FIT, Math.min(1, (o.clientWidth - 8) / natRef.current.w));
+    setScale((s) => (Math.abs(next - s) > 0.005 ? next : s));
   }, []);
-
-  const zoomAt = useCallback((z: number, cx: number, cy: number) => {
-    const v = latest.current.view;
-    const next = Math.min(2, Math.max(MIN_ZOOM, z));
-    setView({ z: next, x: cx - ((cx - v.x) * next) / v.z, y: cy - ((cy - v.y) * next) / v.z });
-  }, []);
-
-  const zoomBy = (f: number) => {
-    interacted.current = true;
-    const c = canvasRef.current;
-    if (!c) return;
-    const r = c.getBoundingClientRect();
-    zoomAt(view.z * f, r.width / 2, r.height / 2);
-  };
-
-  const arrange = () => {
-    const next = { ...latest.current.pos, ...autoLayout(visibleFiles, data.edges, sizes) };
-    latest.current.pos = next;
-    setPos(next);
-    save();
-    fit(next);
-  };
-
-  // 박스 높이를 재서 연결선과 전체 보기에 쓴다.
+  // 레인 안의 박스 위치를 재서 연결선을 그린다.
   useLayoutEffect(() => {
-    const w = worldRef.current;
-    if (!w) return;
-    let changed = false;
-    const next = { ...sizes };
-    w.querySelectorAll<HTMLElement>('[data-box]').forEach((el) => {
-      const id = el.dataset.box!;
-      if (next[id] !== el.offsetHeight) {
-        next[id] = el.offsetHeight;
-        changed = true;
-      }
+    const inner = innerRef.current;
+    if (!inner) return;
+    const ir = inner.getBoundingClientRect();
+    const next: Record<string, Rect> = {};
+    inner.querySelectorAll<HTMLElement>('[data-fid]').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      next[el.dataset.fid!] = { x: (r.left - ir.left) / scale, y: (r.top - ir.top) / scale, w: r.width / scale, h: r.height / scale };
     });
-    if (!changed) return;
-    latest.current.sizes = next;
-    setSizes(next);
-    if (!arranged.current) {
-      // 저장된 위치는 그대로 두고 새 파일만 실제 높이로 배치한다.
-      const auto = autoLayout(data.files, data.edges, next);
-      const merged = { ...auto, ...(saved.pos ?? {}) };
-      latest.current.pos = merged;
-      setPos(merged);
+    const size = { w: inner.offsetWidth, h: inner.offsetHeight };
+    const key = JSON.stringify([next, size], (_k, v) => (typeof v === 'number' ? Math.round(v) : v));
+    if (key !== rectKey.current) {
+      rectKey.current = key;
+      setRects(next);
+      setNat(size);
+      natRef.current = size;
+      if (!manual.current) fit();
     }
-    if (!interacted.current) requestAnimationFrame(() => fit());
+    if (pendingScroll.current && outerRef.current) {
+      outerRef.current.scrollLeft = pendingScroll.current.left;
+      outerRef.current.scrollTop = pendingScroll.current.top;
+      pendingScroll.current = null;
+    }
   });
 
+  const goMap = useCallback((id: string) => {
+    const o = outerRef.current, el = innerRef.current?.querySelector<HTMLElement>(`[data-fid="${CSS.escape(id)}"]`);
+    if (!o || !el) return;
+    const ir = innerRef.current!.getBoundingClientRect(), r = el.getBoundingClientRect();
+    o.scrollTo({ left: Math.max(0, r.left - ir.left + r.width / 2 - o.clientWidth / 2), top: Math.max(0, r.top - ir.top + r.height / 2 - o.clientHeight / 2), behavior: 'smooth' });
+    setFlash(id);
+    clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlash(null), 1400);
+  }, []);
+
+  const selectFile = useCallback((id: string) => {
+    setSel(id);
+    setOpenRows([]);
+    setCur(null);
+    if (panelRef.current) panelRef.current.scrollTop = 0;
+  }, []);
+
+  const scrollRow = useCallback((key: string) => {
+    // 패널이 새 파일을 그린 뒤에 찾는다.
+    window.setTimeout(() => {
+      const c = panelRef.current, el = c?.querySelector<HTMLElement>(`[data-row="${CSS.escape(key)}"]`);
+      if (!c || !el) return;
+      const cr = c.getBoundingClientRect(), er = el.getBoundingClientRect();
+      if (er.top < cr.top + 40 || er.top > cr.bottom - 80) c.scrollTop += er.top - cr.top - cr.height / 3;
+    }, 40);
+  }, []);
+
+  const toggleRow = useCallback((key: string) => {
+    setCur(key);
+    setOpenRows((rows) => (rows.includes(key) ? rows.filter((x) => x !== key) : [...rows, key]));
+  }, []);
+
+  const toggleReviewed = useCallback((id: string) => {
+    setReviewed((r) => {
+      const next = { ...r, [id]: !r[id] };
+      saveJson(reviewedKey, next);
+      return next;
+    });
+  }, [reviewedKey]);
+
+  const stepFile = useCallback((d: number) => {
+    if (!fileOrder.length) return;
+    const i = sel ? fileOrder.indexOf(sel) : -1;
+    const id = fileOrder[i < 0 ? 0 : (i + d + fileOrder.length) % fileOrder.length]!;
+    selectFile(id);
+    goMap(id);
+  }, [fileOrder, sel, selectFile, goMap]);
+
+  const moveRow = useCallback((d: number) => {
+    if (!sel) return stepFile(1);
+    if (!rowKeys.length) return;
+    const i = cur ? rowKeys.indexOf(cur) : -1;
+    const next = rowKeys[i < 0 ? (d > 0 ? 0 : rowKeys.length - 1) : Math.max(0, Math.min(rowKeys.length - 1, i + d))]!;
+    setCur(next);
+    scrollRow(next);
+  }, [sel, rowKeys, cur, stepFile, scrollRow]);
+
+  const nextUnverified = useCallback(() => {
+    if (!unverified.length) return;
+    const i = (unverifiedAt + 1) % unverified.length;
+    const u = unverified[i]!;
+    setSel(u.file);
+    setOpenRows([u.key]);
+    setCur(u.key);
+    setUnverifiedAt(i);
+    scrollRow(u.key);
+    goMap(u.file);
+  }, [unverified, unverifiedAt, scrollRow, goMap]);
+
+  const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
+  keyHandler.current = (e) => {
+    const target = e.target as HTMLElement | null, tag = target?.tagName;
+    if (tag === 'TEXTAREA' || tag === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
+    // 한글 입력 상태에서도 같은 키로 동작하도록 물리 키로 읽는다.
+    const k = KEY_CODES[e.code] ?? e.key;
+    if (k === 'Escape') {
+      if (composer) setComposer(null);
+      else if (sel) {
+        setSel(null);
+        setCur(null);
+      }
+    } else if (k === 'j' || k === 'k') {
+      e.preventDefault();
+      moveRow(k === 'j' ? 1 : -1);
+    } else if (k === 'Enter' && cur && tag !== 'BUTTON' && tag !== 'A') {
+      e.preventDefault();
+      toggleRow(cur);
+    } else if (k === 'n' || k === 'p') {
+      e.preventDefault();
+      stepFile(k === 'n' ? 1 : -1);
+    } else if (k === 'x' && sel) {
+      e.preventDefault();
+      toggleReviewed(sel);
+    } else if (k === 'u') {
+      e.preventDefault();
+      nextUnverified();
+    }
+  };
+
   useEffect(() => {
-    const onMove = (e: globalThis.MouseEvent) => {
+    const onKey = (e: KeyboardEvent) => keyHandler.current(e);
+    const onMove = (e: MouseEvent) => {
       const d = drag.current;
       if (!d) return;
-      if (d.type === 'box') {
-        const z = latest.current.view.z;
-        setPos((p) => ({ ...p, [d.id]: { x: d.ox + (e.clientX - d.sx) / z, y: d.oy + (e.clientY - d.sy) / z } }));
-      } else if (d.type === 'pan') {
-        setView((v) => ({ ...v, x: d.ox + e.clientX - d.sx, y: d.oy + e.clientY - d.sy }));
+      if (d.type === 'pan') {
+        const o = outerRef.current;
+        if (!o) return;
+        const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+        if (Math.abs(dx) + Math.abs(dy) > 4) panMoved.current = true;
+        o.scrollLeft = d.ox - dx;
+        o.scrollTop = d.oy - dy;
       } else {
-        const W = window.innerWidth;
-        setPanelPct(Math.min(60, Math.max(24, ((W - e.clientX) / W) * 100)));
+        setPanelW(Math.round(Math.min(Math.max(320, window.innerWidth - e.clientX), Math.min(820, window.innerWidth - 360))));
       }
     };
     const onUp = () => {
       const d = drag.current;
+      if (!d) return;
       drag.current = null;
-      if (d?.type === 'box') save();
-      if (d?.type === 'pan') setPanning(false);
+      if (d.type === 'pan') setPanning(false);
+      else setSplitting(false);
+      setTimeout(() => {
+        panMoved.current = false;
+      }, 0);
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPinned(null);
-    };
-    const c = canvasRef.current;
+    const o = outerRef.current;
     const onWheel = (e: WheelEvent) => {
+      if (!o) return;
       e.preventDefault();
-      interacted.current = true;
-      const v = latest.current.view;
-      if (e.ctrlKey || e.metaKey) {
-        const r = c!.getBoundingClientRect();
-        zoomAt(v.z * Math.exp(-e.deltaY * 0.0025), e.clientX - r.left, e.clientY - r.top);
-      } else setView({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY });
+      const r = o.getBoundingClientRect(), s0 = scaleRef.current;
+      const s1 = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, s0 * Math.exp(-e.deltaY * 0.0015)));
+      if (Math.abs(s1 - s0) < 0.0005) return;
+      const cx = e.clientX - r.left, cy = e.clientY - r.top;
+      manual.current = true;
+      pendingScroll.current = { left: ((o.scrollLeft + cx) / s0) * s1 - cx, top: ((o.scrollTop + cy) / s0) * s1 - cy };
+      setScale(s1);
     };
+    window.addEventListener('keydown', onKey);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-    window.addEventListener('keydown', onKey);
-    c?.addEventListener('wheel', onWheel, { passive: false });
+    o?.addEventListener('wheel', onWheel, { passive: false });
     const ro = new ResizeObserver(() => {
-      if (!interacted.current) fit();
+      if (!manual.current) fit();
     });
-    if (c) ro.observe(c);
-    const settle = window.setTimeout(() => {
-      // 첫 배치가 끝나면 이후 높이 변화로 배치를 다시 흔들지 않는다.
-      arranged.current = true;
-    }, 2500);
+    if (o) ro.observe(o);
+    // 글꼴이 들어와 크기가 정해지면 그 뒤로는 배율을 흔들지 않는다.
+    const lock = () => window.setTimeout(() => {
+      manual.current = true;
+    }, 400);
+    document.fonts.ready.then(() => {
+      fit();
+      lock();
+    });
     return () => {
+      window.removeEventListener('keydown', onKey);
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('keydown', onKey);
-      c?.removeEventListener('wheel', onWheel);
+      o?.removeEventListener('wheel', onWheel);
       ro.disconnect();
-      clearTimeout(settle);
     };
-  }, [fit, save, zoomAt]);
+  }, [fit]);
 
-  const toggledSet = useMemo(() => new Set(toggled), [toggled]);
-  const collapsed = useMemo(() => {
-    const out = new Set<string>();
-    defaultCollapsed.forEach((k) => {
-      if (!toggledSet.has(k)) out.add(k);
-    });
-    toggled.forEach((k) => {
-      if (!defaultCollapsed.has(k)) out.add(k);
-    });
-    return out;
-  }, [defaultCollapsed, toggled, toggledSet]);
-
-  const toggleLine = (k: string) => {
-    const next = toggled.includes(k) ? toggled.filter((x) => x !== k) : [...toggled, k];
-    latest.current.toggled = next;
-    setToggled(next);
-    save();
+  const zoom = (f: number) => {
+    manual.current = true;
+    setScale((s) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, s * f)));
   };
 
-  const enterLine = (k: string) => {
-    clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => setHover(k), 110);
-  };
-  const pinLine = (k: string) => {
-    clearTimeout(hoverTimer.current);
-    setPinned((p) => (p === k ? null : k));
-    setHover(k);
-  };
-
-  const showOnMap = (id: string) => {
-    const c = canvasRef.current;
-    const p = pos[id];
-    const f = fileById.get(id);
-    if (!c || !p || !f) return;
-    interacted.current = true;
-    if (f.status === 'reference') setShowRefs(true);
-    const r = c.getBoundingClientRect();
-    setView((v) => ({ ...v, x: r.width / 2 - (p.x + f.width / 2) * v.z, y: r.height / 2 - (p.y + (sizes[id] ?? 200) / 2) * v.z }));
-    setFlash(id);
-    clearTimeout(flashTimer.current);
-    flashTimer.current = window.setTimeout(() => setFlash(null), 1200);
+  const resetView = () => {
+    manual.current = false;
+    setPanelW(DEFAULT_PANEL);
+    const o = outerRef.current;
+    if (o) {
+      o.scrollLeft = 0;
+      o.scrollTop = 0;
+    }
+    window.setTimeout(() => {
+      fit();
+      window.setTimeout(() => {
+        manual.current = true;
+      }, 300);
+    }, 0);
   };
 
-  const activeKey = pinned ?? hover;
-  const line = activeKey ? (lines[activeKey] ?? null) : null;
-  const related = useMemo(() => {
+  const startPan = (e: ReactMouseEvent) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('[data-fid], a, button')) return;
+    const o = outerRef.current;
+    if (!o) return;
+    e.preventDefault();
+    panMoved.current = false;
+    drag.current = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: o.scrollLeft, oy: o.scrollTop };
+    setPanning(true);
+  };
+
+  const saveDrafts = (next: Draft[]) => {
+    setDrafts(next);
+    saveJson(draftsKey, next);
+  };
+
+  // 선택한 파일의 이웃과, 펼친 분기의 근거가 있는 파일을 강조한다.
+  const neighbors = useMemo(() => {
     const set = new Set<string>();
-    if (!line) return set;
-    set.add(line.fileId);
-    for (const ev of [...line.node.evidence, ...(line.node.affectedBy?.evidence ?? [])]) {
-      const f = fileOfEvidence(data, ev);
-      if (f) set.add(f.id);
+    if (sel) for (const e of data.edges) {
+      if (e.from === sel) set.add(e.to);
+      if (e.to === sel) set.add(e.from);
     }
     return set;
-  }, [line, data]);
+  }, [sel, data]);
+  const evidenceFiles = useMemo(() => {
+    const set = new Set<string>();
+    const f = sel ? fileById.get(sel) : null;
+    if (!f) return set;
+    for (const r of flattenTree(f.id, f.tree)) {
+      if (!openRows.includes(r.key)) continue;
+      for (const ev of nodeEvidence(r.node)) {
+        const t = fileOfEvidence(data, ev);
+        if (t && t.id !== sel) set.add(t.id);
+      }
+    }
+    return set;
+  }, [sel, openRows, data, fileById]);
 
-  const visibleIds = new Set(visibleFiles.map((f) => f.id));
-  const edges = data.edges
-    .filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to))
-    .map((e, i) => {
-      const a = pos[e.from], b = pos[e.to];
-      const fa = fileById.get(e.from), fb = fileById.get(e.to);
-      const geo = a && b && fa && fb
-        ? edgeLine({ ...a, w: fa.width, h: sizes[e.from] ?? 200 }, { ...b, w: fb.width, h: sizes[e.to] ?? 200 })
-        : null;
-      const on =
-        (!!line && related.has(e.from) && related.has(e.to) && (e.from === line.fileId || e.to === line.fileId)) ||
-        (!!selected && (e.from === selected || e.to === selected));
-      return { key: `${e.from}>${e.to}:${i}`, edge: e, geo, on };
-    });
-  const focusing = !!line || !!selected;
+  const geos = useMemo(() => edgeGeometry(data.edges, rects), [data, rects]);
+  const focus = sel ?? hover;
+  const visibleEdges = data.edges
+    .map((edge, i) => ({ edge, geo: geos[i], on: !!focus && (edge.from === focus || edge.to === focus), i }))
+    .filter((x) => x.geo && (x.on || showAll));
 
-  const { pr, counts } = data;
   const statusText = stale ? '업데이트 필요' : data.latestHead ? '분석 최신' : '분석 커밋';
   const statusDot = stale ? 'var(--accent)' : data.latestHead ? 'var(--add)' : 'var(--line-strong)';
-  const refCount = data.files.length - data.files.filter((f) => f.status !== 'reference').length;
   const cmd = rerunCommand(pr);
+  const refCount = data.files.filter((f) => f.status === 'reference').length;
+  const prAdd = [...data.files, ...data.unclassified].reduce((a, f) => a + f.additions, 0);
+  const prDel = [...data.files, ...data.unclassified].reduce((a, f) => a + f.deletions, 0);
+  const reviewedCount = data.files.filter((f) => reviewed[f.id]).length;
+  const order = data.readingOrder.flatMap(({ file, why }) => {
+    const f = fileById.get(file);
+    return f ? [{ file: f, why }] : [];
+  });
 
   return (
     <div className="app">
@@ -324,18 +452,40 @@ function MapScreen({ data }: { data: ViewerMapData }) {
           <div className="header-title">
             <span className="header-repo">{pr.repo}{pr.number ? ` #${pr.number}` : ''}</span>
             <span className="header-name" title={pr.title}>{pr.title}</span>
+            <span className="header-stat" title="PR 전체 변경 줄 수 (미분류 포함)">
+              <span style={{ color: 'var(--add)' }}>+{prAdd}</span>
+              <span style={{ color: 'var(--del)' }}>−{prDel}</span>
+            </span>
           </div>
           <div className="header-meta">
             <span>{pr.baseRef} ← {pr.headRef}</span>
-            <span>파일 {counts.changed} · 지도 {counts.mapped} · 미분류 {counts.unclassified}{counts.unverified ? ` · 확인 필요 ${counts.unverified}` : ''}</span>
+            <span>파일 {counts.changed} · 지도 {counts.mapped - refCount}{refCount ? ` · 참고 ${refCount}` : ''} · 미분류 {counts.unclassified}</span>
+            <span>확인 {reviewedCount}/{data.files.length}</span>
           </div>
         </div>
+        {drafts.length > 0 && (
+          <a className="drafts-link" href={pr.number ? `${pr.url}/files` : pr.url} target="_blank" rel="noopener noreferrer">
+            리뷰 초안 <b>{drafts.length}</b> · GitHub에서 제출 ↗
+          </a>
+        )}
         <div className="status-pill">
           <span className="status-dot" style={{ background: statusDot }} />
           <span>{statusText}</span>
           <span style={{ color: 'var(--fg3)' }}>{pr.head.slice(0, 7)}</span>
         </div>
-        <a className="github-link" href={pr.url} target="_blank" rel="noopener noreferrer">GitHub에서 보기 ↗</a>
+        <button className="unverified-btn" title="다음 확인 필요 항목으로 이동 (u)" onClick={nextUnverified}>
+          확인 필요 <b>{unverified.length}</b>
+          <span className="unverified-pos">{unverifiedAt >= 0 ? `${unverifiedAt + 1}/${unverified.length}` : ''}</span>
+          <kbd>u</kbd>
+        </button>
+        <div className="segment" role="group" aria-label="레인 기준">
+          <button aria-pressed={layout === 'status'} onClick={() => setLayout('status')}>A · 상태별 레인</button>
+          <button aria-pressed={layout === 'role'} onClick={() => setLayout('role')}>B · 역할별 레인</button>
+        </div>
+        <button className="all-links" aria-pressed={showAll} onClick={() => setShowAll(!showAll)}>
+          <span className="all-links-box" style={{ background: showAll ? 'var(--accent)' : 'transparent' }} />
+          모든 연결 표시
+        </button>
       </header>
 
       {stale && (
@@ -348,188 +498,137 @@ function MapScreen({ data }: { data: ViewerMapData }) {
       )}
 
       <div className="body">
-        <div
-          ref={canvasRef}
-          className="canvas"
-          data-testid="canvas"
-          onScroll={(e) => {
-            // 화면 밖 줄에 포커스가 가면 브라우저가 캔버스를 스크롤한다.
-            // 범례와 도구 막대가 밀리지 않게 스크롤을 지도 이동으로 바꾼다.
-            const el = e.currentTarget;
-            const { scrollLeft: dx, scrollTop: dy } = el;
-            if (!dx && !dy) return;
-            el.scrollLeft = 0;
-            el.scrollTop = 0;
-            interacted.current = true;
-            setView((v) => ({ ...v, x: v.x - dx, y: v.y - dy }));
-          }}
-          onMouseDown={(e) => {
-            if (e.button !== 0) return;
-            interacted.current = true;
-            drag.current = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y };
-            setPanning(true);
-            setSelected(null);
-          }}
-          style={{
-            cursor: panning ? 'grabbing' : 'default',
-            backgroundSize: `${20 * view.z}px ${20 * view.z}px`,
-            backgroundPosition: `${view.x}px ${view.y}px`,
-          }}
-        >
-          <div ref={worldRef} className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.z})` }}>
-            <svg className="edges" width={1} height={1} aria-hidden="true">
-              <defs>
-                {(['n', 'a'] as const).map((t) => (
-                  <marker key={t} id={`pm-arrow-${t}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto">
-                    <path d="M1,1 L8,5 L1,9" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ stroke: t === 'a' ? 'var(--accent)' : 'var(--line-strong)' }} />
-                  </marker>
+        <div className="map">
+          <div
+            ref={outerRef}
+            className="map-scroll"
+            data-testid="map"
+            style={{ cursor: panning ? 'grabbing' : 'grab', userSelect: panning || splitting ? 'none' : 'auto' }}
+            onMouseDown={startPan}
+            onClick={() => {
+              if (!panMoved.current && sel) setSel(null);
+            }}
+          >
+            <div style={{ position: 'relative', width: Math.ceil(nat.w * scale), height: Math.ceil(nat.h * scale) }}>
+              <div ref={innerRef} className="lanes" style={{ transform: `scale(${scale})` }}>
+                <svg className="edges" width={1} height={1} aria-hidden="true">
+                  <defs>
+                    {(['n', 'a'] as const).map((t) => (
+                      <marker key={t} id={`pm-arrow-${t}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto">
+                        <path d="M1,1 L8,5 L1,9" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ stroke: t === 'a' ? 'var(--accent)' : 'var(--line-strong)' }} />
+                      </marker>
+                    ))}
+                  </defs>
+                  {visibleEdges.map(({ edge, geo, on, i }) => (
+                    <path
+                      key={i}
+                      d={geo!.d}
+                      fill="none"
+                      strokeWidth={on ? 1.6 : 1}
+                      strokeDasharray={edge.kind === 'replacedBy' || edge.unverified ? '5 4' : undefined}
+                      markerEnd={`url(#pm-arrow-${on ? 'a' : 'n'})`}
+                      style={{ stroke: on ? 'var(--accent)' : 'var(--line-strong)', opacity: on ? 1 : 0.7 }}
+                    />
+                  ))}
+                </svg>
+                {lanes.map((lane) => (
+                  <div key={lane.title} className="lane">
+                    <div className="lane-head">
+                      <span className="lane-title">{lane.title}</span>
+                      <span className="lane-count">{lane.files.length}</span>
+                      <span className="lane-sub">{lane.sub}</span>
+                    </div>
+                    {lane.files.map((f) => (
+                      <FileBox
+                        key={f.id}
+                        file={f}
+                        selected={sel === f.id}
+                        dimmed={!!sel && sel !== f.id && !neighbors.has(f.id) && !evidenceFiles.has(f.id)}
+                        neighbor={neighbors.has(f.id)}
+                        evidence={evidenceFiles.has(f.id)}
+                        flash={flash === f.id}
+                        reviewed={!!reviewed[f.id]}
+                        onClick={() => {
+                          if (sel === f.id) setSel(null);
+                          else selectFile(f.id);
+                        }}
+                        onEnter={() => setHover(f.id)}
+                        onLeave={() => setHover(null)}
+                      />
+                    ))}
+                  </div>
                 ))}
-              </defs>
-              {edges.map(({ key: k, edge, geo, on }) =>
-                geo ? (
-                  <path
-                    key={k}
-                    d={geo.d}
-                    fill="none"
-                    strokeWidth={on ? 1.75 : 1.25}
-                    strokeDasharray={edge.kind === 'replacedBy' || edge.unverified ? '5 4' : undefined}
-                    markerEnd={`url(#pm-arrow-${on ? 'a' : 'n'})`}
-                    style={{ stroke: on ? 'var(--accent)' : 'var(--line-strong)', opacity: focusing && !on ? 0.2 : 1, transition: 'stroke .2s, opacity .2s' }}
-                  />
-                ) : null,
-              )}
-            </svg>
-            {edges.map(({ key: k, edge, geo, on }) =>
-              geo && (on || view.z >= LABEL_MIN_ZOOM) ? (
-                <div key={k} className="edge-label" style={{ left: geo.lx, top: geo.ly, borderColor: on ? 'var(--accent)' : 'var(--line)', borderStyle: edge.unverified ? 'dashed' : 'solid', color: on ? 'var(--fg)' : 'var(--fg3)' }}>
-                  {edge.label}{edge.unverified ? ' · 확인 필요' : ''}
-                </div>
-              ) : null,
-            )}
-            {visibleFiles.map((f) => {
-              const p = pos[f.id];
-              if (!p) return null;
-              const isRel = related.has(f.id);
-              const isOther = isRel && !!line && f.id !== line.fileId;
-              return (
-                <FileBox
-                  key={f.id}
-                  file={f}
-                  x={p.x}
-                  y={p.y}
-                  z={selected === f.id ? 3 : isRel ? 2 : 1}
-                  border={isOther || flash === f.id ? 'var(--accent)' : isRel ? 'var(--line-strong)' : 'var(--line)'}
-                  flash={flash === f.id}
-                  selected={selected === f.id}
-                  baseSha={pr.base}
-                  collapsed={collapsed}
-                  activeKey={activeKey}
-                  activePath={line?.path ?? []}
-                  pinnedKey={pinned}
-                  onBoxFocus={() => setSelected(f.id)}
-                  onDragStart={(e) => {
-                    if (e.button !== 0) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    interacted.current = true;
-                    arranged.current = true;
-                    setSelected(f.id);
-                    drag.current = { type: 'box', id: f.id, sx: e.clientX, sy: e.clientY, ox: p.x, oy: p.y };
-                  }}
-                  onEnter={enterLine}
-                  onLeave={() => clearTimeout(hoverTimer.current)}
-                  onLineFocus={(k, el) => {
-                    setHover(k);
-                    // 키보드로 화면 밖 줄에 왔을 때만 지도를 옮긴다. 마우스 클릭 때는 화면을 움직이지 않는다.
-                    const c = canvasRef.current;
-                    if (!c || !el.matches(':focus-visible')) return;
-                    const box = c.getBoundingClientRect();
-                    const r = el.getBoundingClientRect();
-                    const margin = 24;
-                    const dx = r.left < box.left + margin ? box.left + margin - r.left : r.right > box.right - margin ? box.right - margin - r.right : 0;
-                    const dy = r.top < box.top + margin ? box.top + margin - r.top : r.bottom > box.bottom - margin ? box.bottom - margin - r.bottom : 0;
-                    if (dx || dy) {
-                      interacted.current = true;
-                      setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
-                    }
-                  }}
-                  onPin={pinLine}
-                  onToggle={toggleLine}
-                />
-              );
-            })}
-          </div>
-
-          <div className="legend">
-            <span><span style={{ color: 'var(--add)' }}>+</span> 추가</span>
-            <span><span style={{ color: 'var(--del)' }}>−</span> 삭제</span>
-            <span><span style={{ color: 'var(--chg)' }}>●</span> 수정</span>
-            <span><span style={{ color: 'var(--aff)' }}>◐</span> 영향</span>
-            <span>표시 없음 = 변경 없음</span>
-          </div>
-
-          {data.unclassified.length > 0 && (
-            <div className="unc" onMouseDown={(e) => e.stopPropagation()}>
-              <button className="unc-toggle" aria-expanded={uncOpen} onClick={() => setUncOpen(!uncOpen)}>
-                <span style={{ fontWeight: 600 }}>미분류</span>
-                <span className="mono" style={{ fontSize: 12, color: 'var(--fg3)' }}>{data.unclassified.length}</span>
-                <span style={{ flex: 1, fontSize: 12, color: 'var(--fg3)' }}>지도에 넣지 않은 변경 파일</span>
-                <span style={{ fontSize: 9, color: 'var(--fg3)' }}>{uncOpen ? '▼' : '▶'}</span>
-              </button>
-              {uncOpen && (
-                <div className="unc-list">
-                  {data.unclassified.map((u) => {
-                    const sha = u.status === 'deleted' ? pr.base : pr.head;
-                    const stat = u.binary ? '변경' : `${u.additions ? `+${u.additions}` : ''}${u.additions && u.deletions ? ' ' : ''}${u.deletions ? `−${u.deletions}` : ''}`;
-                    return (
-                      <a key={u.path} className="unc-item" href={`https://github.com/${pr.repo}/blob/${sha}/${u.path.split('/').map(encodeURIComponent).join('/')}`} target="_blank" rel="noopener noreferrer">
-                        <span className="unc-path" title={u.path}>{u.path}</span>
-                        <span className="unc-diff">{stat}</span>
-                        <span className="unc-reason">{u.reason}</span>
-                      </a>
-                    );
-                  })}
-                  <span className="unc-note">분석 범위는 .pr-map.yml에서 바꿀 수 있습니다.</span>
-                </div>
-              )}
+                <Unclassified data={data} />
+                {visibleEdges.filter((x) => x.on).map(({ edge, geo, i }) => (
+                  <div key={i} className="edge-label" style={{ left: geo!.lx, top: geo!.ly, borderStyle: edge.unverified ? 'dashed' : 'solid' }}>
+                    {edge.label}{edge.unverified ? ' · 확인 필요' : ''}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-
-          <div className="toolbar" onMouseDown={(e) => e.stopPropagation()}>
-            <button className="tool tool-icon" aria-label="축소" onClick={() => zoomBy(1 / 1.2)}>−</button>
-            <span className="tool-zoom">{Math.round(view.z * 100)}%</span>
-            <button className="tool tool-icon" aria-label="확대" onClick={() => zoomBy(1.2)}>+</button>
-            <span className="tool-sep" />
-            <button className="tool" onClick={() => fit()}>전체 보기</button>
-            <button className="tool" onClick={arrange}>자동 정렬</button>
-            {refCount > 0 && <button className="tool" aria-pressed={showRefs} onClick={() => setShowRefs(!showRefs)}>참고 파일 {refCount} {showRefs ? '숨기기' : '보기'}</button>}
+          </div>
+          <div className="map-tools">
+            <div className="toolbar">
+              <button className="tool tool-icon" aria-label="축소" onClick={() => zoom(1 / 1.15)}>−</button>
+              <span className="tool-zoom">{Math.round(scale * 100)}%</span>
+              <button className="tool tool-icon" aria-label="확대" onClick={() => zoom(1.15)}>+</button>
+              <span className="tool-sep" />
+              <button className="tool" onClick={resetView}>초기화</button>
+            </div>
+            <div className="legend">
+              <span>분기</span>
+              <span><b style={{ color: 'var(--add)' }}>+</b> 추가</span>
+              <span><b style={{ color: 'var(--del)' }}>−</b> 삭제</span>
+              <span><b style={{ color: 'var(--chg)' }}>●</b> 수정</span>
+              <span><b style={{ color: 'var(--aff)' }}>◐</b> 영향</span>
+            </div>
           </div>
         </div>
-
         <div
           className="splitter"
+          title="드래그해서 패널 폭 조절"
           onMouseDown={(e) => {
             e.preventDefault();
+            manual.current = true;
             drag.current = { type: 'split' };
+            setSplitting(true);
           }}
         />
-        <EvidencePanel
+        <FilePanel
           data={data}
-          line={line}
-          pinned={!!pinned}
-          width={panelPct}
-          openEvidence={activeKey ? (openEv[activeKey] ?? [0]) : []}
-          wideEvidence={wideEv}
-          onUnpin={() => setPinned(null)}
-          onToggleEvidence={(i) => {
-            if (!activeKey) return;
-            const cur = openEv[activeKey] ?? [0];
-            setOpenEv({ ...openEv, [activeKey]: cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i] });
+          file={sel ? (fileById.get(sel) ?? null) : null}
+          width={panelW}
+          panelRef={panelRef}
+          reviewed={!!(sel && reviewed[sel])}
+          openRows={openRows}
+          currentRow={cur}
+          openEvidence={openEvidence}
+          order={order}
+          drafts={drafts}
+          composer={composer}
+          onSelect={(id) => {
+            selectFile(id);
+            goMap(id);
           }}
-          onToggleWide={(id) => setWideEv((w) => ({ ...w, [id]: !w[id] }))}
-          onShowOnMap={showOnMap}
+          onClose={() => setSel(null)}
+          onToggleReviewed={() => sel && toggleReviewed(sel)}
+          onToggleRow={toggleRow}
+          onToggleEvidence={(key, i) => {
+            const open = openEvidence[key] ?? [0];
+            setOpenEvidence({ ...openEvidence, [key]: open.includes(i) ? open.filter((x) => x !== i) : [...open, i] });
+          }}
+          onShowOnMap={goMap}
           onCopy={copy}
           copied={copied}
+          onCompose={(key) => setComposer({ key, text: '' })}
+          onComposerText={(text) => setComposer((c) => (c ? { ...c, text } : c))}
+          onComposerCancel={() => setComposer(null)}
+          onDraftSave={(lk, where) => {
+            const text = composer?.text.trim();
+            if (text) saveDrafts([...drafts, { id: Date.now(), lineKey: lk, where, text }]);
+            setComposer(null);
+          }}
+          onDraftDelete={(id) => saveDrafts(drafts.filter((d) => d.id !== id))}
         />
       </div>
     </div>

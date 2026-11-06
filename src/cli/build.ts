@@ -1,21 +1,25 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { CodeEntry, CollectInput, Evidence, MapFile, PrMap, RelationCandidate, TreeNode, ViewerData, ViewerFile, ViewerMapData } from '../shared/types';
+import type { CodeEntry, CollectInput, Evidence, MapFile, PrMap, RelationCandidate, TestEvidence, TreeNode, ViewerData, ViewerEdge, ViewerFile, ViewerMapData } from '../shared/types';
 import { CodeIndex } from './code';
 import { buildComment } from './comment';
 import { commentPath, viewerDataPath, viewerHtmlPath, writeJson, writeText } from './paths';
 import { countUnverified } from './validate';
 
 const DATA_SLOT = '/*__PR_MAP_DATA__*/null';
-
-function depthOf(nodes: TreeNode[]): number {
-  return nodes.reduce((max, n) => Math.max(max, 1 + depthOf(n.children ?? [])), 0);
-}
+const LINKED_TEST = '분기에 연결됨';
 
 function collectEvidence(nodes: TreeNode[], out: Evidence[]): void {
   for (const n of nodes) {
     out.push(...n.evidence, ...(n.affectedBy?.evidence ?? []));
     if (n.children) collectEvidence(n.children, out);
+  }
+}
+
+function collectTests(nodes: TreeNode[], out: TestEvidence[]): void {
+  for (const n of nodes) {
+    if (n.tests) out.push(...n.tests);
+    if (n.children) collectTests(n.children, out);
   }
 }
 
@@ -37,7 +41,6 @@ export function buildViewerData(map: PrMap, input: CollectInput, code: CodeIndex
       dir: f.path.slice(0, slash + 1),
       additions: c?.additions ?? 0,
       deletions: c?.deletions ?? 0,
-      width: depthOf(f.tree) >= 3 ? 410 : 340,
       replacedByNames: (f.replacedBy ?? []).map((id) => {
         const target = byId.get(id);
         return target ? target.path.slice(target.path.lastIndexOf('/') + 1) : id;
@@ -56,12 +59,21 @@ export function buildViewerData(map: PrMap, input: CollectInput, code: CodeIndex
   const evidence: Evidence[] = [];
   map.files.forEach((f) => collectEvidence(f.tree, evidence));
   evidence.forEach((ev) => add(ev.side, ev.path));
+  const tests: TestEvidence[] = [];
+  map.files.forEach((f) => collectTests(f.tree, tests));
+  tests.forEach((t) => add('head', t.path));
+  const linkedTests = new Set(tests.map((t) => t.path));
 
   // 변경 파일인데 AI가 지도에 넣지 않았으면 조용히 빠뜨리지 않는다.
   const mapped = new Set(map.files.map((f) => f.path));
   const unclassified = [
-    ...input.unclassified,
-    ...input.files.filter((f) => !mapped.has(f.path)).map((f) => ({ ...f, reason: '분석 결과 없음' })),
+    ...input.unclassified.map((f) => (f.category === 'test' ? { ...f, reason: linkedTests.has(f.path) ? LINKED_TEST : '연결된 분기 없음' } : f)),
+    ...input.files.filter((f) => !mapped.has(f.path)).map((f) => ({ ...f, reason: '분석 결과 없음', category: 'attention' as const })),
+  ];
+
+  const edges: ViewerEdge[] = [
+    ...map.edges.map((e) => ({ ...e, kind: 'calls' as const })),
+    ...map.files.flatMap((f) => (f.replacedBy ?? []).map((to) => ({ from: f.id, to, label: '대체됨', kind: 'replacedBy' as const }))),
   ];
 
   return {
@@ -73,8 +85,9 @@ export function buildViewerData(map: PrMap, input: CollectInput, code: CodeIndex
       unclassified: unclassified.length,
       unverified: countUnverified(map),
     },
+    readingOrder: map.readingOrder,
     files,
-    edges: map.edges,
+    edges,
     unclassified,
     codeIndex,
     code: entries,

@@ -9,7 +9,7 @@ import { COMMENT_MARKER } from './comment';
 import { CliError, repoRoot, run, tryGit } from './git';
 import { commentPath, inputPath, mapPath, readJson, readJsonIfExists, statePath, viewerDataPath, viewerHtmlPath, writeJson } from './paths';
 import { cmdSetup } from './setup';
-import { checkRules, checkSchema, countUnverified, demote, normalize, stabilizeIds, type Problem } from './validate';
+import { checkRules, checkSchema, countUnverified, demote, normalize, stabilizeIds, type Problem, pruneTests } from './validate';
 
 const MAX_ATTEMPTS = 3;
 
@@ -76,6 +76,7 @@ function cmdValidate(root: string): number {
   const code = codeIndexFor(root, input);
   const remapped = stabilizeIds(map, input.previous);
   remapped.forEach((l) => console.log(`id 보정: ${l}`));
+  pruneTests(map, input, code).forEach((l) => console.log(`테스트 연결 제거: ${l}`));
 
   let problems = checkRules(map, input, code);
   if (problems.length) {
@@ -143,7 +144,8 @@ function openInBrowser(file: string): void {
 function cmdView(root: string, opts: { open: boolean }): void {
   const ready = readJsonIfExists<ViewerMapData>(viewerDataPath(root));
   const input = readJsonIfExists<CollectInput>(inputPath(root));
-  const current = !!ready && !!input && ready.pr.head === input.pr.head;
+  // 이전 형식의 결과는 지금 뷰어로 그릴 수 없으므로 다시 분석하게 한다.
+  const current = !!ready && !!input && ready.pr.head === input.pr.head && 'readingOrder' in ready;
   let data: ViewerData;
   if (current) {
     const latest = latestHead(root, input!);

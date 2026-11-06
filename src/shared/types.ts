@@ -10,6 +10,14 @@ export interface Evidence {
   role: string;
 }
 
+/** head 커밋의 테스트 코드 위치 */
+export interface TestEvidence {
+  path: string;
+  start: number;
+  end: number;
+  role: string;
+}
+
 export interface TreeNode {
   id: string;
   text: string;
@@ -17,13 +25,18 @@ export interface TreeNode {
   affectedBy?: { text: string; evidence: Evidence[] };
   unverified?: true;
   evidence: Evidence[];
+  tests?: TestEvidence[];
   children?: TreeNode[];
 }
+
+export type FileLayer = 'entry' | 'core' | 'store' | 'ext';
 
 export interface MapFile {
   id: string;
   path: string;
   status: FileStatus;
+  layer: FileLayer;
+  role: string;
   oldPath?: string;
   replacedBy?: string[];
   tree: TreeNode[];
@@ -32,14 +45,24 @@ export interface MapFile {
 export interface MapEdge {
   from: string;
   to: string;
-  kind: 'calls' | 'replacedBy';
   label: string;
   unverified?: true;
 }
 
+export interface ViewerEdge extends MapEdge {
+  /** replacedBy는 files[].replacedBy에서 빌드할 때 만든다. */
+  kind: 'calls' | 'replacedBy';
+}
+
+export interface ReadingStep {
+  file: string;
+  why: string;
+}
+
 export interface PrMap {
-  version: 1;
+  version: 2;
   pr: { repo: string; number: number | null; base: string; head: string; summary: string };
+  readingOrder: ReadingStep[];
   files: MapFile[];
   edges: MapEdge[];
 }
@@ -53,8 +76,12 @@ export interface ChangedFile {
   binary: boolean;
 }
 
+/** attention은 분석했어야 하는데 못 한 파일이라 리뷰어가 직접 봐야 한다. */
+export type UnclassifiedCategory = 'attention' | 'test' | 'fixture' | 'doc' | 'generated' | 'excluded' | 'other';
+
 export interface UnclassifiedFile extends ChangedFile {
   reason: string;
+  category: UnclassifiedCategory;
 }
 
 export interface RelationCandidate {
@@ -104,7 +131,6 @@ export interface ViewerFile extends MapFile {
   dir: string;
   additions: number;
   deletions: number;
-  width: number;
   replacedByNames: string[];
   /** 삭제 파일: head에 남은 호출 설명 */
   callers: string;
@@ -114,8 +140,9 @@ export interface ViewerMapData {
   status: 'ready';
   pr: PrInfo & { summary: string };
   counts: { changed: number; mapped: number; unclassified: number; unverified: number };
+  readingOrder: ReadingStep[];
   files: ViewerFile[];
-  edges: MapEdge[];
+  edges: ViewerEdge[];
   unclassified: UnclassifiedFile[];
   /** "side:path" → code 키 */
   codeIndex: Record<string, string>;

@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pr-map.dev/schema/pr-map.v1.json",
+  "$id": "https://pr-map.dev/schema/pr-map.v2.json",
   "title": "PR Map analysis (AI output)",
   "type": "object",
-  "required": ["version", "pr", "files", "edges"],
+  "required": ["version", "pr", "readingOrder", "files", "edges"],
   "additionalProperties": false,
   "properties": {
-    "version": { "const": 1 },
+    "version": { "const": 2 },
     "pr": {
       "type": "object",
       "required": ["repo", "number", "base", "head", "summary"],
@@ -21,6 +21,21 @@
         "base": { "type": "string", "description": "merge-base commit", "pattern": "^[0-9a-f]{7,40}$" },
         "head": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
         "summary": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "readingOrder": {
+      "description": "리뷰어에게 권하는 변경 파일 읽는 순서",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["file", "why"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "$ref": "#/$defs/id" },
+          "why": { "type": "string", "minLength": 1, "maxLength": 40 }
+        }
       }
     },
     "files": {
@@ -41,12 +56,17 @@
     },
     "file": {
       "type": "object",
-      "required": ["id", "path", "status", "tree"],
+      "required": ["id", "path", "status", "layer", "role", "tree"],
       "additionalProperties": false,
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "path": { "type": "string", "minLength": 1 },
         "status": { "enum": ["added", "modified", "deleted", "renamed", "reference"] },
+        "layer": {
+          "description": "역할별 레인. entry: 진입점, core: 핵심 로직, store: 저장소·인프라, ext: 공통·외부",
+          "enum": ["entry", "core", "store", "ext"]
+        },
+        "role": { "description": "이 파일이 하는 일 한 줄", "type": "string", "minLength": 1, "maxLength": 60 },
         "oldPath": { "type": "string", "minLength": 1 },
         "replacedBy": { "type": "array", "items": { "$ref": "#/$defs/id" } },
         "tree": { "type": "array", "items": { "$ref": "#/$defs/node" } }
@@ -83,6 +103,12 @@
         },
         "unverified": { "const": true },
         "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "tests": {
+          "description": "이 분기를 확인하는, 이번 PR에서 바뀐 테스트",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/testEvidence" }
+        },
         "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
       },
       "allOf": [
@@ -110,14 +136,26 @@
         "role": { "type": "string", "minLength": 1, "maxLength": 40 }
       }
     },
-    "edge": {
+    "testEvidence": {
+      "description": "head 커밋의 테스트 코드 위치",
       "type": "object",
-      "required": ["from", "to", "kind", "label"],
+      "required": ["path", "start", "end", "role"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "start": { "type": "integer", "minimum": 1 },
+        "end": { "type": "integer", "minimum": 1 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 40 }
+      }
+    },
+    "edge": {
+      "description": "호출·사용 관계. 삭제 파일의 대체 관계는 files[].replacedBy에만 쓴다.",
+      "type": "object",
+      "required": ["from", "to", "label"],
       "additionalProperties": false,
       "properties": {
         "from": { "$ref": "#/$defs/id" },
         "to": { "$ref": "#/$defs/id" },
-        "kind": { "enum": ["calls", "replacedBy"] },
         "label": { "type": "string", "minLength": 1, "maxLength": 40 },
         "unverified": { "const": true, "description": "코드에서 확인하지 못한 관계(F06)" }
       }

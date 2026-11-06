@@ -9,8 +9,8 @@ import { parseChanges } from '../src/cli/collect';
 import { buildMermaid, escapeMd, mermaidLabel, permalink } from '../src/cli/comment';
 import { parseGithubRemote } from '../src/cli/git';
 import { renderHtml } from '../src/cli/build';
-import { autoLayout } from '../src/viewer/layout';
-import type { CollectInput, PrMap, ViewerMapData } from '../src/shared/types';
+import { buildLanes, edgeGeometry, flattenTree, groupUnclassified } from '../src/viewer/lanes';
+import type { CollectInput, FileLayer, FileStatus, PrMap, TreeNode, UnclassifiedFile, ViewerFile, ViewerMapData } from '../src/shared/types';
 import { makeFixture, type Fixture } from './fixture';
 
 const CLI = path.resolve('skill/pr-map/scripts/pr-map.js');
@@ -25,6 +25,9 @@ function cli(fx: Fixture, ...args: string[]) {
 const sample = (): PrMap => JSON.parse(readFileSync(SAMPLE, 'utf8'));
 const writeMap = (fx: Fixture, map: unknown) => writeFileSync(path.join(fx.root, '.pr-map/pr-map.json'), JSON.stringify(map));
 const readOut = <T,>(fx: Fixture, name: string): T => JSON.parse(readFileSync(path.join(fx.root, '.pr-map', name), 'utf8'));
+
+// spawnSync가 이벤트 루프를 막아 vitest 내부 통신이 시간 초과되지 않도록 테스트 사이에 차례를 넘긴다.
+beforeEach(() => new Promise<void>((resolve) => setImmediate(resolve)));
 
 describe('순수 함수', () => {
   it('diff를 양쪽 줄 번호로 풀어낸다', () => {
@@ -72,24 +75,49 @@ const l = await import('./lazy')`);
     expect(parseJsonc('{ // c\n "a": "http://x", /* y */ "b": [1,], }')).toEqual({ a: 'http://x', b: [1] });
   });
 
-  it('자동 정렬: 호출자를 왼쪽에 두고, 긴 열은 나누며, 겹치지 않는다', () => {
-    const files = ['a', 'b', 'c', 'd', 'e', 'lone'].map((id) => ({ id, width: 340 }));
-    const edges = ['b', 'c', 'd', 'e'].map((to) => ({ from: 'a', to, kind: 'calls' as const, label: 'x' }));
-    const heights = Object.fromEntries(files.map((f) => [f.id, 400]));
-    const pos = autoLayout(files, edges, heights);
-    for (const to of ['b', 'c', 'd', 'e']) expect(pos[to]!.x).toBeGreaterThan(pos.a!.x);
-    expect(pos.lone!.x).toBeGreaterThan(pos.b!.x);
-    expect(new Set(['b', 'c', 'd', 'e'].map((id) => pos[id]!.x)).size).toBeGreaterThan(1);
-    const ids = Object.keys(pos);
-    for (const p of ids) for (const q of ids) {
-      if (p !== q) expect(pos[p]!.x === pos[q]!.x && Math.abs(pos[p]!.y - pos[q]!.y) < 400).toBe(false);
-    }
-  });
+  describe('레인', () => {
+    const file = (id: string, status: FileStatus, layer: FileLayer) => ({ id, name: `${id}.ts`, status, layer }) as ViewerFile;
+    const files = [file('a', 'added', 'core'), file('m', 'modified', 'entry'), file('r', 'renamed', 'store'), file('d', 'deleted', 'core'), file('x', 'reference', 'ext')];
+    const ids = (layout: 'status' | 'role', edges: { from: string; to: string; label: string }[] = []) => buildLanes(files, edges, layout).map((l) => l.files.map((f) => f.id));
 
-  it('자동 정렬: 순환 관계에서도 끝난다', () => {
-    const files = [{ id: 'a', width: 340 }, { id: 'b', width: 340 }];
-    const edges = [{ from: 'a', to: 'b', kind: 'calls' as const, label: 'x' }, { from: 'b', to: 'a', kind: 'calls' as const, label: 'y' }];
-    expect(Object.keys(autoLayout(files, edges, {}))).toHaveLength(2);
+    it('상태별 레인은 이름 변경을 수정에 넣고, 참고 파일을 따로 둔다', () => {
+      expect(ids('status')).toEqual([['a'], ['m', 'r'], ['d'], ['x']]);
+    });
+
+    it('역할별 레인은 layer로 나눈다', () => {
+      expect(ids('role')).toEqual([['m'], ['a', 'd'], ['r'], ['x']]);
+    });
+
+    it('레인 안에서는 연결이 많은 파일을 위에 둔다', () => {
+      expect(ids('status', [{ from: 'r', to: 'a', label: 'x' }])[1]).toEqual(['r', 'm']);
+    });
+
+    it('연결선은 상대 위치에 따라 면을 고르고 같은 레인은 오른쪽으로 돌아 나간다', () => {
+      const rects = { a: { x: 0, y: 0, w: 100, h: 100 }, b: { x: 300, y: 0, w: 100, h: 100 }, c: { x: 0, y: 200, w: 100, h: 100 } };
+      const [ab, ba, ac, ghost] = edgeGeometry([{ from: 'a', to: 'b' }, { from: 'b', to: 'a' }, { from: 'a', to: 'c' }, { from: 'a', to: 'ghost' }], rects);
+      expect(ab!.d).toMatch(/^M100,/);
+      expect(ba!.d).toMatch(/^M300,/);
+      expect(ac!.d).toMatch(/^M100,.* 100,\d/);
+      expect(ghost).toBeNull();
+    });
+
+    it('미분류를 종류별로 묶고, 분석하지 못한 파일은 직접 확인 목록에 둔다', () => {
+      const u = (path: string, category: string) => ({ path, category }) as UnclassifiedFile;
+      const { attention, groups } = groupUnclassified([u('big.ts', 'attention'), u('a.md', 'doc'), u('a.test.ts', 'test'), u('b.md', 'doc'), u('old.ts', 'unknown')]);
+      expect(attention.map((f) => f.path)).toEqual(['big.ts', 'old.ts']);
+      expect(groups.map((g) => [g.label, g.items.length])).toEqual([['테스트 코드', 1], ['문서', 2]]);
+    });
+
+    it('트리를 줄 목록과 트리 선으로 펼친다', () => {
+      const n = (id: string, children?: TreeNode[]) => ({ id, text: id, change: 'added', evidence: [], children }) as TreeNode;
+      const rows = flattenTree('f', [n('a', [n('b', [n('c')]), n('d')])]);
+      expect(rows.map((r) => [r.key, r.prefix, r.cont])).toEqual([
+        ['f:a', '', ''],
+        ['f:b', '├─ ', '│  '],
+        ['f:c', '│  └─ ', '│     '],
+        ['f:d', '└─ ', '   '],
+      ]);
+    });
   });
 
   it('GitHub 원격 주소를 해석한다', () => {
@@ -127,6 +155,17 @@ const l = await import('./lazy')`);
     expect(byDefault.files.map((x) => x.path)).toEqual(sources);
     expect(byDefault.unclassified.map((u) => u.path)).toEqual(tests);
     expect(new Set(byDefault.unclassified.map((u) => u.reason))).toEqual(new Set(['테스트 · 기본 제외']));
+
+    const kinds = classify([f('src/a.test.ts'), f('test/fixtures/a.jsonl'), f('docs/a.md'), f('pnpm-lock.yaml'), f('a.conf'), f('secret.ts')], { exclude: ['secret.ts'], maxFiles: 50 });
+    expect(Object.fromEntries(kinds.unclassified.map((u) => [u.path, u.category]))).toEqual({
+      'src/a.test.ts': 'test',
+      'test/fixtures/a.jsonl': 'fixture',
+      'docs/a.md': 'doc',
+      'pnpm-lock.yaml': 'generated',
+      'a.conf': 'other',
+      'secret.ts': 'excluded',
+    });
+    expect(classify([f('a.ts'), f('b.ts')], { exclude: [], maxFiles: 1 }).unclassified[0]!.category).toBe('attention');
 
     const included = classify(all, { exclude: [], maxFiles: 50, includeTests: true });
     expect(included.files).toHaveLength(all.length);
@@ -168,6 +207,7 @@ describe('시안의 예시 PR로 전체 흐름', () => {
     });
     expect(input.files.find((f) => f.status === 'renamed')!.oldPath).toBe('src/auth/token-store.ts');
     expect(Object.fromEntries(input.unclassified.map((u) => [u.path, u.reason]))).toEqual({
+      'src/auth/__tests__/session-refresh.test.ts': '테스트 · 기본 제외',
       'pnpm-lock.yaml': '자동 생성 · 제외 규칙',
       'docs/auth/session.md': '문서',
       'infra/redis.conf': '지원하지 않는 형식',
@@ -215,7 +255,7 @@ describe('시안의 예시 PR로 전체 흐름', () => {
 
   it.each<[string, (m: PrMap) => void, string]>([
     ['줄 범위 초과', (m) => { m.files[6]!.tree[0]!.evidence[0]!.end = 6; }, 'files[6].tree[0].evidence[0]: end(6)'],
-    ['added에 base 근거', (m) => { m.files[0]!.tree[0]!.children![0]!.evidence.push({ side: 'base', path: 'src/auth/session-refresh.ts', start: 8, end: 10, role: '이전' }); }, 'base 근거를 쓸 수 없습니다'],
+    ['added인데 base 근거만 있음', (m) => { m.files[0]!.tree[0]!.children![0]!.evidence = [{ side: 'base', path: 'src/auth/session-refresh.ts', start: 8, end: 10, role: '이전' }]; }, 'added 노드의 근거가 head'],
     ['modified인데 변경 줄 없음', (m) => { m.files[0]!.tree[0]!.change = 'modified'; }, 'modified 노드의 근거가'],
     ['unchanged인데 변경 줄과 겹침', (m) => { m.files[2]!.tree[0]!.evidence[0]!.start = 2; }, 'unchanged 노드의 근거가 변경 줄과 겹칩니다'],
     ['deleted에 head 근거', (m) => { m.files[0]!.tree[0]!.children![3]!.evidence[0]!.side = 'head'; }, 'deleted 노드의 근거는 모두 base'],
@@ -224,7 +264,10 @@ describe('시안의 예시 PR로 전체 흐름', () => {
     ['파일 status 변조', (m) => { m.files[1]!.status = 'modified'; }, 'status는 input.json 값'],
     ['없는 파일을 가리키는 엣지', (m) => { m.edges[0]!.to = 'ghost'; }, '없는 파일 id'],
     ['중복 노드 id', (m) => { m.files[1]!.tree[1]!.id = 'acquire'; }, '중복됩니다'],
-    ['미분류 파일을 지도에 넣음', (m) => { m.files.push({ id: 'lock', path: 'pnpm-lock.yaml', status: 'modified', tree: [] }); }, '미분류 파일'],
+    ['미분류 파일을 지도에 넣음', (m) => { m.files.push({ id: 'lock', path: 'pnpm-lock.yaml', status: 'modified', layer: 'ext', role: '잠금 파일', tree: [] }); }, '미분류 파일'],
+    ['읽는 순서가 없는 파일을 가리킴', (m) => { m.readingOrder[0]!.file = 'ghost'; }, 'readingOrder[0]: 없는 파일 id'],
+    ['읽는 순서에 참고 파일', (m) => { m.readingOrder[0]!.file = 'token-client'; }, '참고 파일'],
+    ['읽는 순서 중복', (m) => { m.readingOrder[1]!.file = m.readingOrder[0]!.file; }, 'readingOrder[1]: 파일 id'],
     ['깊이 초과', (m) => {
       const leaf = (id: string): never => ({ id, text: id, change: 'added', evidence: [{ side: 'head', path: 'src/auth/refresh-lock.ts', start: 5, end: 5, role: 'x' }] }) as never;
       m.files[1]!.tree[0]!.children![0]!.children = [{ ...(leaf('d3') as object), children: [{ ...(leaf('d4') as object), children: [leaf('d5')] }] } as never];
@@ -247,6 +290,75 @@ describe('시안의 예시 PR로 전체 흐름', () => {
     const r = cli(fx, 'validate');
     expect(r.code).toBe(1);
     expect(r.out).toContain('files[0].tree[0].text');
+  });
+
+  it.each<[string, (m: Record<string, unknown> & PrMap) => void, string]>([
+    ['이전 버전', (m) => { (m as { version: number }).version = 1; }, 'version'],
+    ['layer 없음', (m) => { delete (m.files[0] as Partial<PrMap['files'][number]>).layer; }, 'files[0]'],
+    ['role 없음', (m) => { delete (m.files[0] as Partial<PrMap['files'][number]>).role; }, 'files[0]'],
+    ['읽는 순서 없음', (m) => { delete (m as Partial<PrMap>).readingOrder; }, 'readingOrder'],
+    ['엣지에 kind', (m) => { (m.edges[0] as unknown as { kind: string }).kind = 'calls'; }, 'edges[0]'],
+    ['테스트 근거에 side', (m) => { (m.files[0]!.tree[0]!.children![0]!.tests![0] as unknown as { side: string }).side = 'head'; }, 'tests[0]'],
+  ])('v2 형식을 어기면 알려준다: %s', (_n, mutate, expected) => {
+    cli(fx, 'collect');
+    const m = sample() as Record<string, unknown> & PrMap;
+    mutate(m);
+    writeMap(fx, m);
+    const r = cli(fx, 'validate');
+    expect(r.code).toBe(1);
+    expect(r.out).toContain(expected);
+  });
+
+  it('added 노드에 이전 구현을 base 보조 근거로 붙일 수 있다', () => {
+    cli(fx, 'collect');
+    const m = sample();
+    m.files[0]!.tree[0]!.children![0]!.evidence.push({ side: 'base', path: 'src/auth/session-refresh.ts', start: 8, end: 10, role: '이전 구현' });
+    writeMap(fx, m);
+    expect(cli(fx, 'validate').code).toBe(0);
+  });
+
+  describe('테스트 연결', () => {
+    const TEST = 'src/auth/__tests__/session-refresh.test.ts';
+    const validated = (mutate: (node: PrMap['files'][number]['tree'][number], m: PrMap) => void) => {
+      cli(fx, 'collect');
+      const m = sample();
+      mutate(m.files[0]!.tree[0]!.children![0]!, m);
+      writeMap(fx, m);
+      const r = cli(fx, 'validate');
+      expect(r.code).toBe(0);
+      return { out: r.out, map: readOut<PrMap>(fx, 'pr-map.json') };
+    };
+
+    it('이번 PR에서 바뀐 줄을 가리키는 테스트는 남긴다', () => {
+      const { out, map } = validated(() => {});
+      expect(out).not.toContain('테스트 연결 제거');
+      expect(map.files[0]!.tree[0]!.children![0]!.tests).toEqual([{ path: TEST, start: 9, end: 12, role: '동시 요청 → 갱신 한 번' }]);
+    });
+
+    it.each<[string, { path: string; start: number; end: number }, string]>([
+      ['같은 파일의 건드리지 않은 테스트', { path: TEST, start: 5, end: 7 }, '바뀐 줄이 아닙니다'],
+      ['바뀌지 않은 테스트 파일', { path: 'src/auth/__tests__/old-unrelated.test.ts', start: 1, end: 1 }, '바뀐 테스트 파일이 아닙니다'],
+      ['테스트가 아닌 변경 파일', { path: 'src/auth/session-refresh.ts', start: 13, end: 14 }, '바뀐 테스트 파일이 아닙니다'],
+      ['줄 수 초과', { path: TEST, start: 9, end: 99 }, '줄 수'],
+    ])('연결을 지우고 분기 설명은 유지한다: %s', (_n, ref, reason) => {
+      const { out, map } = validated((node) => { node.tests = [{ ...ref, role: 'x' }]; });
+      expect(out).toContain('테스트 연결 제거');
+      expect(out).toContain(reason);
+      const node = map.files[0]!.tree[0]!.children![0]!;
+      expect(node.tests).toBeUndefined();
+      expect(node.unverified).toBeUndefined();
+    });
+
+    it('바뀌지 않은 분기와 삭제된 분기에는 연결하지 않는다', () => {
+      const ref = { path: TEST, start: 9, end: 12, role: 'x' };
+      const { out, map } = validated((_node, m) => {
+        m.files[0]!.tree[0]!.tests = [ref];
+        m.files[0]!.tree[0]!.children![3]!.tests = [ref];
+      });
+      expect(out.match(/바뀐 분기가 아닙니다/g)).toHaveLength(2);
+      expect(map.files[0]!.tree[0]!.tests).toBeUndefined();
+      expect(map.files[0]!.tree[0]!.children![3]!.tests).toBeUndefined();
+    });
   });
 
   it('3번째 실패에서 해당 노드만 확인 필요로 강등하고 코드를 지어내지 않는다 (F06·F11)', () => {
@@ -310,7 +422,24 @@ describe('시안의 예시 PR로 전체 흐름', () => {
       const by = Object.fromEntries(d.files.map((f) => [f.id, f]));
       expect(by['session-refresh']).toMatchObject({ additions: 30, deletions: 3, name: 'session-refresh.ts', dir: 'src/auth/' });
       expect(by['legacy-refresh']).toMatchObject({ replacedByNames: ['session-refresh.ts'], callers: 'head에 남은 호출 없음' });
-      expect(d.counts).toEqual({ changed: 11, mapped: 8, unclassified: 4, unverified: 1 });
+      expect(d.counts).toEqual({ changed: 12, mapped: 8, unclassified: 5, unverified: 1 });
+    });
+
+    it('v2 필드를 뷰어 데이터로 넘기고 대체 엣지를 replacedBy에서 만든다', () => {
+      const d = data();
+      const by = Object.fromEntries(d.files.map((f) => [f.id, f]));
+      expect(by['session-store']).toMatchObject({ layer: 'store', role: '세션 조회, 버전 비교 저장, 조건부 삭제' });
+      expect(d.readingOrder[0]).toEqual({ file: 'session-refresh', why: '갱신 흐름의 중심 · 분기 대부분이 여기' });
+      expect(d.edges).toContainEqual({ from: 'legacy-refresh', to: 'session-refresh', label: '대체됨', kind: 'replacedBy' });
+      expect(d.edges.filter((e) => e.kind === 'replacedBy')).toHaveLength(1);
+      expect(d.edges.filter((e) => e.kind === 'calls')).toHaveLength(3);
+    });
+
+    it('연결된 테스트는 코드와 미분류 표시를 함께 갖춘다', () => {
+      const d = data();
+      const key = d.codeIndex['head:src/auth/__tests__/session-refresh.test.ts']!;
+      expect(d.code[key]).toHaveProperty('rows');
+      expect(d.unclassified.find((u) => u.path === 'src/auth/__tests__/session-refresh.test.ts')!.reason).toBe('분기에 연결됨');
     });
 
     it('지도에서 빠진 변경 파일은 미분류로 드러낸다', () => {
@@ -319,7 +448,7 @@ describe('시안의 예시 PR로 전체 흐름', () => {
       m.files.forEach((f) => { if (f.id === 'csv-export') f.tree = []; });
       writeMap(fx, m);
       expect(cli(fx, 'build').code).toBe(0);
-      expect(data().unclassified.find((u) => u.path === 'src/routes.ts')!.reason).toBe('분석 결과 없음');
+      expect(data().unclassified.find((u) => u.path === 'src/routes.ts')).toMatchObject({ reason: '분석 결과 없음', category: 'attention' });
     });
 
     it('댓글: Mermaid, 접힘 트리, 커밋 고정 링크, 확인 필요 건수를 담는다 (F16)', () => {
@@ -332,6 +461,14 @@ describe('시안의 예시 PR로 전체 흐름', () => {
       expect(body).toContain('근거 확인 필요 1건');
       expect(body).toContain('~~바로 갱신 → 버전 확인 없이 저장 후 다시 조회~~');
       expect(buildMermaid(data())).toContain('-.->|"대체됨"|');
+    });
+
+    it('view: 이전 형식의 결과는 그리지 않고 분석 상태로 안내한다', () => {
+      const file = path.join(fx.root, '.pr-map/viewer-data.json');
+      const { readingOrder: _dropped, ...old } = data();
+      writeFileSync(file, JSON.stringify(old));
+      expect(cli(fx, 'view', '--no-open').code).toBe(0);
+      expect(readFileSync(path.join(fx.root, '.pr-map/viewer/index.html'), 'utf8')).toContain('"status":"analyzing"');
     });
 
     it('뷰어는 외부 호출 없이 데이터가 인라인된 단일 파일이다 (시나리오 6)', () => {
