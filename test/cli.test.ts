@@ -243,7 +243,7 @@ const l = await import('./lazy')`);
         { where: "a.ts L3", text: "확인" },
         { where: "b.ts 이전 L9", text: "왜 삭제?" },
       ]),
-    ).toBe("a.ts L3: 확인\n\nb.ts 이전 L9: 왜 삭제?");
+    ).toBe("- a.ts L3: 확인\n- b.ts 이전 L9: 왜 삭제?");
   });
 
   it("GitHub 원격 주소를 해석한다", () => {
