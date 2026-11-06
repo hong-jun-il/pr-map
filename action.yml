@@ -61,6 +61,12 @@ runs:
         CLAUDE_CODE_VERSION: ${{ inputs.claude-code-version }}
       run: npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
 
+    - id: sandbox
+      name: 하위 프로세스 격리 준비
+      if: steps.collect.outputs.skip != 'true'
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/action/sandbox.sh"
+
     # PR 코드를 읽는 단계다. GitHub 토큰을 넘기지 않는다.
     - id: analyze
       name: PR 분석
