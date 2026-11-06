@@ -64,6 +64,16 @@ export function rerunCommand(pr: { number: number | null }): string {
   return pr.number ? `/pr-map ${pr.number}` : "/pr-map";
 }
 
+/**
+ * 로컬 파일로 열면 내 PC에 오래 남겨도 된다. 웹에서는 artifact가 다른 저장소의 HTML과
+ * 같은 주소를 공유할 수 있어, 다른 페이지가 읽지 못하는 탭 단위 저장소만 쓴다.
+ */
+export const keepsAcrossTabs = (protocol: string) => protocol === "file:";
+
+export function draftsText(drafts: { where: string; text: string }[]): string {
+  return drafts.map((d) => `${d.where}: ${d.text}`).join("\n\n");
+}
+
 export function storageKey(
   kind: "reviewed" | "drafts",
   data: ViewerMapData,

@@ -14940,15 +14940,18 @@ function fileSection(f, open, data, withTree) {
   lines.push("", "</details>");
   return lines.join("\n");
 }
-function viewerHint(runUrl) {
-  return runUrl ? `\uC804\uCCB4 \uC9C0\uB3C4\uB294 [\uC2E4\uD589 \uD398\uC774\uC9C0](${runUrl})\uC5D0\uC11C \`pr-map-viewer\` artifact\uB97C \uBC1B\uC544 \uC555\uCD95\uC744 \uD480\uACE0 \`index.html\`\uB85C \uC5FD\uB2C8\uB2E4. artifact\uB294 14\uC77C \uB3D9\uC548 \uBCF4\uAD00\uB429\uB2C8\uB2E4.` : "\uC804\uCCB4 \uC9C0\uB3C4\uB294 \uCCB4\uD06C\uC544\uC6C3 \uD6C4 `/pr-map view`\uB85C \uC5FD\uB2C8\uB2E4.";
+function viewerHint({ runUrl, viewerUrl }) {
+  if (viewerUrl)
+    return "\uC804\uCCB4 \uC9C0\uB3C4\uB294 GitHub\uC5D0 \uB85C\uADF8\uC778\uD55C \uC0C1\uD0DC\uB85C \uC5F4\uC5B4\uC57C \uD558\uACE0, \uB9C1\uD06C\uB294 14\uC77C \uB4A4 \uB9CC\uB8CC\uB429\uB2C8\uB2E4.";
+  return runUrl ? `\uC804\uCCB4 \uC9C0\uB3C4\uB294 [\uC2E4\uD589 \uD398\uC774\uC9C0](${runUrl})\uC758 artifact\uC5D0\uC11C \uC5FD\uB2C8\uB2E4. artifact\uB294 14\uC77C \uB3D9\uC548 \uBCF4\uAD00\uB429\uB2C8\uB2E4.` : "\uC804\uCCB4 \uC9C0\uB3C4\uB294 \uCCB4\uD06C\uC544\uC6C3 \uD6C4 `/pr-map view`\uB85C \uC5FD\uB2C8\uB2E4.";
 }
-function buildComment(data, runUrl) {
+function buildComment(data, links = {}) {
   const { pr, counts: c } = data;
   const changed = data.files.filter((f) => f.status !== "reference").length;
   const refs = data.files.length - changed;
   const head = pr.head.slice(0, 7);
   const firstWithTree = data.files.findIndex((f) => f.tree.length > 0);
+  const open = links.viewerUrl ? [`**[\uC804\uCCB4 \uC9C0\uB3C4 \uC5F4\uAE30](${links.viewerUrl})**`, ""] : [];
   const compose = (treeCount) => {
     let shown = 0;
     const sections = data.files.map((f, i) => {
@@ -14959,7 +14962,7 @@ function buildComment(data, runUrl) {
     const footer = [
       `\uADFC\uAC70 \uD655\uC778 \uD544\uC694 ${c.unverified}\uAC74 \xB7 \uBD84\uC11D \uCEE4\uBC0B \`${head}\` \xB7 \uBBF8\uBD84\uB958 ${c.unclassified}\uAC1C`,
       "",
-      `<sub>${viewerHint(runUrl)} \uADFC\uAC70 \uC904 \uC704\uCE58\uB294 \uCEE4\uBC0B\uC5D0\uC11C \uAC80\uC99D\uD588\uC9C0\uB9CC, \uC124\uBA85\uC758 \uC758\uBBF8\uB294 \uC790\uB3D9 \uAC80\uC99D \uB300\uC0C1\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uC774 \uB313\uAE00\uC740 \uBD84\uC11D\uC744 \uB2E4\uC2DC \uAC8C\uC2DC\uD560 \uB54C \uAC31\uC2E0\uB429\uB2C8\uB2E4.</sub>`
+      `<sub>${viewerHint(links)} \uADFC\uAC70 \uC904 \uC704\uCE58\uB294 \uCEE4\uBC0B\uC5D0\uC11C \uAC80\uC99D\uD588\uC9C0\uB9CC, \uC124\uBA85\uC758 \uC758\uBBF8\uB294 \uC790\uB3D9 \uAC80\uC99D \uB300\uC0C1\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uC774 \uB313\uAE00\uC740 \uBD84\uC11D\uC744 \uB2E4\uC2DC \uAC8C\uC2DC\uD560 \uB54C \uAC31\uC2E0\uB429\uB2C8\uB2E4.</sub>`
     ];
     return [
       COMMENT_MARKER,
@@ -14967,6 +14970,7 @@ function buildComment(data, runUrl) {
       "",
       `${escapeMd(pr.summary)} \uBCC0\uACBD \uD30C\uC77C ${changed}\uAC1C\uC640 \uCC38\uACE0 \uD30C\uC77C ${refs}\uAC1C\uAC00 \uC544\uB798\uCC98\uB7FC \uC5F0\uACB0\uB429\uB2C8\uB2E4.`,
       "",
+      ...open,
       "```mermaid",
       buildMermaid(data),
       "```",
@@ -14987,7 +14991,8 @@ function buildComment(data, runUrl) {
     "",
     escapeMd(pr.summary),
     "",
-    `\uBD84\uC11D \uCEE4\uBC0B \`${head}\`. \uACB0\uACFC\uAC00 \uB108\uBB34 \uAE38\uC5B4 \uC804\uCCB4 \uC9C0\uB3C4\uC5D0\uC11C\uB9CC \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4. ${viewerHint(runUrl)}`,
+    ...open,
+    `\uBD84\uC11D \uCEE4\uBC0B \`${head}\`. \uACB0\uACFC\uAC00 \uB108\uBB34 \uAE38\uC5B4 \uC804\uCCB4 \uC9C0\uB3C4\uC5D0\uC11C\uB9CC \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4. ${viewerHint(links)}`,
     ""
   ].join("\n");
 }
@@ -15804,7 +15809,7 @@ function build(root, map, input, code) {
   writeViewer(root, data);
   writeText(
     commentPath(root),
-    buildComment(data, process.env.PR_MAP_RUN_URL || void 0)
+    buildComment(data, { runUrl: process.env.PR_MAP_RUN_URL || void 0 })
   );
   return data;
 }
@@ -16880,7 +16885,9 @@ function cmdPublish(root) {
   const file = commentPath(root);
   if (!(0, import_node_fs7.existsSync)(file))
     throw new CliError("comment.md\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 build\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
-  const body = (0, import_node_fs7.readFileSync)(file, "utf8");
+  const viewerUrl = process.env.PR_MAP_VIEWER_URL;
+  const data = /^https:\/\/\S+$/.test(viewerUrl ?? "") ? readJsonIfExists(viewerDataPath(root)) : null;
+  const body = data ? buildComment(data, { viewerUrl }) : (0, import_node_fs7.readFileSync)(file, "utf8");
   const { repo, number, head } = input.pr;
   const latest = latestHead(root, input);
   if (latest && latest !== head)

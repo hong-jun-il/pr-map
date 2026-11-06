@@ -81,11 +81,13 @@ runs:
         PR_MAP_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: node "$GITHUB_ACTION_PATH/skill/pr-map/scripts/pr-map.js" build
 
-    - uses: actions/upload-artifact@v4
+    # 압축하지 않아야 댓글 링크를 눌렀을 때 브라우저에서 바로 열린다.
+    - id: upload
+      uses: actions/upload-artifact@v7
       if: steps.collect.outputs.skip != 'true'
       with:
-        name: pr-map-viewer
         path: .pr-map/viewer/index.html
+        archive: false
         include-hidden-files: true
         if-no-files-found: warn
         retention-days: 14
@@ -96,4 +98,5 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
+        PR_MAP_VIEWER_URL: ${{ steps.upload.outputs.artifact-url }}
       run: node "$GITHUB_ACTION_PATH/skill/pr-map/scripts/pr-map.js" publish

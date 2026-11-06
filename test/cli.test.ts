@@ -38,6 +38,7 @@ import type {
   ViewerFile,
   ViewerMapData,
 } from "../src/shared/types";
+import { draftsText, keepsAcrossTabs } from "../src/viewer/model";
 import { makeFixture, type Fixture } from "./fixture";
 
 const CLI = path.resolve("skill/pr-map/scripts/pr-map.js");
@@ -232,6 +233,17 @@ const l = await import('./lazy')`);
         ["f:d", "└─ ", "   "],
       ]);
     });
+  });
+
+  it("초안은 로컬 파일에서만 오래 남기고, 붙여넣기 좋게 복사한다", () => {
+    expect(keepsAcrossTabs("file:")).toBe(true);
+    expect(keepsAcrossTabs("https:")).toBe(false);
+    expect(
+      draftsText([
+        { where: "a.ts L3", text: "확인" },
+        { where: "b.ts 이전 L9", text: "왜 삭제?" },
+      ]),
+    ).toBe("a.ts L3: 확인\n\nb.ts 이전 L9: 왜 삭제?");
   });
 
   it("GitHub 원격 주소를 해석한다", () => {

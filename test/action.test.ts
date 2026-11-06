@@ -152,15 +152,41 @@ describe("액션 단계 실행", () => {
     });
   });
 
-  it("자동 실행 댓글은 전체 지도를 실행 페이지의 artifact로 안내한다", () => {
+  it("자동 실행 댓글은 업로드한 뷰어를 바로 여는 링크를 게시한다", () => {
+    const upload = steps.find((s) =>
+      s.uses?.startsWith("actions/upload-artifact"),
+    )! as Step & { with: { archive: boolean } };
+    expect(upload.uses).toBe("actions/upload-artifact@v7");
+    expect(upload.with.archive).toBe(false);
+    expect(step("publish").env!.PR_MAP_VIEWER_URL).toBe(
+      "${{ steps.upload.outputs.artifact-url }}",
+    );
+
+    const viewerUrl = "https://github.com/acme/api/actions/runs/1/artifacts/2";
+    runStep("collect");
+    runStep("analyze");
+    runStep("build", {
+      PR_MAP_RUN_URL: "https://github.com/acme/api/actions/runs/1",
+    });
+    writeFileSync(fx.log, "");
+    const published = runStep("publish", { PR_MAP_VIEWER_URL: viewerUrl });
+    expect(published.code, published.out).toBe(0);
+    const post = readFileSync(fx.log, "utf8")
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as { args: string[]; stdin: string })
+      .find((c) => c.args.includes("POST"))!;
+    const { body } = JSON.parse(post.stdin) as { body: string };
+    expect(body).toContain(`**[전체 지도 열기](${viewerUrl})**`);
+    expect(body).toContain("GitHub에 로그인");
+    expect(body).not.toContain("실행 페이지");
+  });
+
+  it("뷰어 링크가 없으면 실행 페이지의 artifact로 안내한다", () => {
     const runUrl = "https://github.com/acme/api/actions/runs/123";
     expect(step("build").env!.PR_MAP_RUN_URL).toBe(
       "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
     );
-    const upload = steps.find((s) =>
-      s.uses?.startsWith("actions/upload-artifact"),
-    )! as Step & { with: { name: string } };
-    expect(upload.with.name).toBe("pr-map-viewer");
 
     runStep("collect");
     runStep("analyze");
@@ -171,7 +197,7 @@ describe("액션 단계 실행", () => {
       "utf8",
     );
     expect(comment).toContain(`[실행 페이지](${runUrl})`);
-    expect(comment).toContain("`pr-map-viewer`");
+    expect(comment).not.toContain("전체 지도 열기");
     expect(comment).not.toContain("/pr-map view");
   });
 
@@ -184,7 +210,7 @@ describe("액션 단계 실행", () => {
       "utf8",
     );
     expect(comment).toContain("`/pr-map view`");
-    expect(comment).not.toContain("pr-map-viewer");
+    expect(comment).not.toContain("artifact");
   });
 
   it("에이전트를 제한된 권한으로 실행하고 지시문을 작업 폴더에 둔다", () => {

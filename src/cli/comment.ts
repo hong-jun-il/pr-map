@@ -150,19 +150,34 @@ function fileSection(
   return lines.join("\n");
 }
 
+export interface ViewerLinks {
+  /** Actions 실행 페이지 */
+  runUrl?: string;
+  /** 업로드한 뷰어를 바로 여는 링크 */
+  viewerUrl?: string;
+}
+
 /** 전체 지도를 여는 방법. Actions 실행이면 결과가 리뷰어의 PC에 없으므로 artifact로 안내한다. */
-function viewerHint(runUrl?: string): string {
+function viewerHint({ runUrl, viewerUrl }: ViewerLinks): string {
+  if (viewerUrl)
+    return "전체 지도는 GitHub에 로그인한 상태로 열어야 하고, 링크는 14일 뒤 만료됩니다.";
   return runUrl
-    ? `전체 지도는 [실행 페이지](${runUrl})에서 \`pr-map-viewer\` artifact를 받아 압축을 풀고 \`index.html\`로 엽니다. artifact는 14일 동안 보관됩니다.`
+    ? `전체 지도는 [실행 페이지](${runUrl})의 artifact에서 엽니다. artifact는 14일 동안 보관됩니다.`
     : "전체 지도는 체크아웃 후 `/pr-map view`로 엽니다.";
 }
 
-export function buildComment(data: ViewerMapData, runUrl?: string): string {
+export function buildComment(
+  data: ViewerMapData,
+  links: ViewerLinks = {},
+): string {
   const { pr, counts: c } = data;
   const changed = data.files.filter((f) => f.status !== "reference").length;
   const refs = data.files.length - changed;
   const head = pr.head.slice(0, 7);
   const firstWithTree = data.files.findIndex((f) => f.tree.length > 0);
+  const open = links.viewerUrl
+    ? [`**[전체 지도 열기](${links.viewerUrl})**`, ""]
+    : [];
 
   const compose = (treeCount: number): string => {
     let shown = 0;
@@ -174,7 +189,7 @@ export function buildComment(data: ViewerMapData, runUrl?: string): string {
     const footer = [
       `근거 확인 필요 ${c.unverified}건 · 분석 커밋 \`${head}\` · 미분류 ${c.unclassified}개`,
       "",
-      `<sub>${viewerHint(runUrl)} 근거 줄 위치는 커밋에서 검증했지만, 설명의 의미는 자동 검증 대상이 아닙니다. 이 댓글은 분석을 다시 게시할 때 갱신됩니다.</sub>`,
+      `<sub>${viewerHint(links)} 근거 줄 위치는 커밋에서 검증했지만, 설명의 의미는 자동 검증 대상이 아닙니다. 이 댓글은 분석을 다시 게시할 때 갱신됩니다.</sub>`,
     ];
     return [
       COMMENT_MARKER,
@@ -182,6 +197,7 @@ export function buildComment(data: ViewerMapData, runUrl?: string): string {
       "",
       `${escapeMd(pr.summary)} 변경 파일 ${changed}개와 참고 파일 ${refs}개가 아래처럼 연결됩니다.`,
       "",
+      ...open,
       "```mermaid",
       buildMermaid(data),
       "```",
@@ -204,7 +220,8 @@ export function buildComment(data: ViewerMapData, runUrl?: string): string {
     "",
     escapeMd(pr.summary),
     "",
-    `분석 커밋 \`${head}\`. 결과가 너무 길어 전체 지도에서만 볼 수 있습니다. ${viewerHint(runUrl)}`,
+    ...open,
+    `분석 커밋 \`${head}\`. 결과가 너무 길어 전체 지도에서만 볼 수 있습니다. ${viewerHint(links)}`,
     "",
   ].join("\n");
 }

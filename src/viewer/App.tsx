@@ -23,16 +23,22 @@ import {
   type Rect,
 } from "./lanes";
 import {
+  draftsText,
   fileOfEvidence,
+  keepsAcrossTabs,
   nodeEvidence,
   rerunCommand,
   storageKey,
 } from "./model";
 
+const browserStore = () =>
+  keepsAcrossTabs(location.protocol) ? localStorage : sessionStorage;
+
 function loadJson<T>(key: string, fallback: T): T {
   try {
     return (
-      (JSON.parse(localStorage.getItem(key) ?? "null") as T | null) ?? fallback
+      (JSON.parse(browserStore().getItem(key) ?? "null") as T | null) ??
+      fallback
     );
   } catch {
     return fallback;
@@ -41,7 +47,7 @@ function loadJson<T>(key: string, fallback: T): T {
 
 function saveJson(key: string, value: unknown): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    browserStore().setItem(key, JSON.stringify(value));
   } catch {
     // 저장소를 못 쓰는 환경에서는 이번 세션에서만 유지한다.
   }
@@ -698,6 +704,15 @@ function MapScreen({ data }: { data: ViewerMapData }) {
           >
             리뷰 초안 <b>{drafts.length}</b> · GitHub에서 제출 ↗
           </a>
+        )}
+        {drafts.length > 0 && (
+          <button
+            className="drafts-copy"
+            title="GitHub에 붙여넣을 수 있게 초안 전체를 복사합니다"
+            onClick={() => copy(draftsText(drafts))}
+          >
+            {copied ? "복사했습니다" : "초안 복사"}
+          </button>
         )}
         <div className="status-pill">
           <span className="status-dot" style={{ background: statusDot }} />

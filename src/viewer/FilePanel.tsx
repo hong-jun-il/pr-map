@@ -13,6 +13,7 @@ import {
   evidenceWhere,
   fileOfEvidence,
   githubHref,
+  keepsAcrossTabs,
   nodeEvidence,
   nodeTests,
   rerunCommand,
@@ -181,6 +182,11 @@ function CodeLine({
                 comments.onDraftSave(lk, where);
             }}
           />
+          {!keepsAcrossTabs(location.protocol) && (
+            <span className="composer-note">
+              이 탭을 닫으면 초안이 사라집니다. 필요하면 먼저 복사하세요.
+            </span>
+          )}
           <div className="composer-actions">
             <button onClick={comments.onComposerCancel}>취소</button>
             <button

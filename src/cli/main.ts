@@ -10,7 +10,7 @@ import type {
 import { build, writeViewer } from "./build";
 import { CodeIndex } from "./code";
 import { collect } from "./collect";
-import { COMMENT_MARKER } from "./comment";
+import { buildComment, COMMENT_MARKER } from "./comment";
 import { CliError, repoRoot, run, tryGit } from "./git";
 import {
   commentPath,
@@ -278,7 +278,14 @@ function cmdPublish(root: string): void {
   const file = commentPath(root);
   if (!existsSync(file))
     throw new CliError("comment.md가 없습니다. 먼저 build를 실행하세요.");
-  const body = readFileSync(file, "utf8");
+  // 뷰어 링크는 빌드 뒤 업로드해야 생기므로 게시할 때 댓글에 넣는다.
+  const viewerUrl = process.env.PR_MAP_VIEWER_URL;
+  const data = /^https:\/\/\S+$/.test(viewerUrl ?? "")
+    ? readJsonIfExists<ViewerMapData>(viewerDataPath(root))
+    : null;
+  const body = data
+    ? buildComment(data, { viewerUrl })
+    : readFileSync(file, "utf8");
   const { repo, number, head } = input.pr;
   const latest = latestHead(root, input);
   if (latest && latest !== head)

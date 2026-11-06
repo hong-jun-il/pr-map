@@ -181,7 +181,7 @@ export function build(
   writeViewer(root, data);
   writeText(
     commentPath(root),
-    buildComment(data, process.env.PR_MAP_RUN_URL || undefined),
+    buildComment(data, { runUrl: process.env.PR_MAP_RUN_URL || undefined }),
   );
   return data;
 }
