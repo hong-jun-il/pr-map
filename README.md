@@ -72,12 +72,13 @@ npm run demo        # 시안의 예시 PR을 임시 저장소로 만들어 뷰�
 `npm run build`가 `src/`를 `skill/pr-map/scripts/pr-map.js`와 `skill/pr-map/assets/viewer.html`로 번들합니다. 스킬 폴더는 설치 후 의존성 없이 실행되어야 하므로, 이 생성 파일들도 함께 배포합니다.
 
 ```text
-spec/            스키마, 예시, validate 규칙 (AI 출력 계약)
+spec/            스키마, validate 규칙 (AI 출력 계약)
 skill/pr-map/    배포물: SKILL.md + 번들
 action.yml       GitHub Actions 액션 (action/의 스크립트를 실행)
 src/cli/         수집, 검증, 빌드, 댓글, 게시, 삭제
 src/viewer/      React 뷰어
-samples/         시안의 예시 PR 분석 결과
 test/            실제 git 저장소를 만들어 검증하는 테스트
-design/          Claude Design 원본 시안
+test/fixtures/   테스트와 데모에 쓰는 예시 PR 분석 결과
 ```
+
+뷰어 디자인 원본은 [Claude Design 프로젝트](https://claude.ai/design/p/55f2fe88-6c0a-4448-b278-e568ed4a0554?file=PR+Map+Lanes.dc.html)에 있습니다.

@@ -6,7 +6,4 @@ out/
 # 빌드 때 자리표시자를 치환하는 템플릿
 src/viewer/template.html
 
-# Claude Design 원본 시안
-design/
-
 package-lock.json

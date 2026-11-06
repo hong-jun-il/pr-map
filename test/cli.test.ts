@@ -41,8 +41,7 @@ import type {
 import { makeFixture, type Fixture } from "./fixture";
 
 const CLI = path.resolve("skill/pr-map/scripts/pr-map.js");
-const SAMPLE = path.resolve("samples/acme-482/pr-map.json");
-const EXAMPLE = path.resolve("spec/pr-map.example.json");
+const SAMPLE = path.resolve("test/fixtures/pr-map.json");
 
 function cli(fx: Fixture, ...args: string[]) {
   const r = spawnSync("node", [CLI, ...args], {
@@ -457,14 +456,12 @@ describe("시안의 예시 PR로 전체 흐름", () => {
     expect(readOut<CollectInput>(fx, "input.json").pr.number).toBeNull();
   });
 
-  it("스펙 예시와 8개 파일 샘플이 실제 커밋 기준으로 검증을 통과한다", () => {
+  it("8개 파일 샘플이 실제 커밋 기준으로 검증을 통과한다", () => {
     cli(fx, "collect");
-    for (const file of [SAMPLE, EXAMPLE]) {
-      writeMap(fx, JSON.parse(readFileSync(file, "utf8")));
-      const r = cli(fx, "validate");
-      expect(r.out).toContain("검증 통과");
-      expect(r.code).toBe(0);
-    }
+    writeMap(fx, sample());
+    const r = cli(fx, "validate");
+    expect(r.out).toContain("검증 통과");
+    expect(r.code).toBe(0);
     expect(readOut<PrMap>(fx, "pr-map.json").pr.head).toBe(fx.head);
   });
 

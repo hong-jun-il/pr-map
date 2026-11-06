@@ -18,7 +18,7 @@ const run = (...args: string[]) =>
 run("collect");
 writeFileSync(
   path.join(fx.root, ".pr-map/pr-map.json"),
-  readFileSync("samples/acme-482/pr-map.json"),
+  readFileSync("test/fixtures/pr-map.json"),
 );
 run("build");
 if (process.argv.includes("--stale"))

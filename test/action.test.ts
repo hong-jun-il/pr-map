@@ -6,7 +6,7 @@ import { parse } from "yaml";
 import { makeFixture, type Fixture } from "./fixture";
 
 const ACTION_ROOT = path.resolve(".");
-const SAMPLE = path.resolve("samples/acme-482/pr-map.json");
+const SAMPLE = path.resolve("test/fixtures/pr-map.json");
 
 interface Step {
   id?: string;
