@@ -359,6 +359,7 @@ exec "$FAKE_GIT_BIN" "$@"
       FAKE_GH_LOG: log,
       FAKE_GH_HEAD: head,
       FAKE_GH_BASE: base,
+      PR_MAP_NO_UPDATE_CHECK: "1",
     },
     cleanup: () => rmSync(tmp, { recursive: true, force: true }),
   };

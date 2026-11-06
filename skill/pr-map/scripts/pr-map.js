@@ -3255,8 +3255,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path8) {
-      let input = path8;
+    function removeDotSegments(path9) {
+      let input = path9;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3330,11 +3330,11 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function removeDotSegmentsRelative(path8) {
-      if (path8 === "" || path8[0] === "/") {
-        return removeDotSegments(path8);
+    function removeDotSegmentsRelative(path9) {
+      if (path9 === "" || path9[0] === "/") {
+        return removeDotSegments(path9);
       }
-      const segments = path8.split("/");
+      const segments = path9.split("/");
       const last = segments.length - 1;
       const output = [];
       let trailingDirectory = false;
@@ -3697,8 +3697,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path8 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
+        const path9 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7583,17 +7583,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path8) {
-      const ctrl = callVisitor(key, node, visitor, path8);
+    function visit_(key, node, visitor, path9) {
+      const ctrl = callVisitor(key, node, visitor, path9);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path8, ctrl);
-        return visit_(key, ctrl, visitor, path8);
+        replaceNode(key, path9, ctrl);
+        return visit_(key, ctrl, visitor, path9);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path8 = Object.freeze(path8.concat(node));
+          path9 = Object.freeze(path9.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path8);
+            const ci = visit_(i, node.items[i], visitor, path9);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -7604,13 +7604,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path8 = Object.freeze(path8.concat(node));
-          const ck = visit_("key", node.key, visitor, path8);
+          path9 = Object.freeze(path9.concat(node));
+          const ck = visit_("key", node.key, visitor, path9);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path8);
+          const cv = visit_("value", node.value, visitor, path9);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -7631,17 +7631,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path8) {
-      const ctrl = await callVisitor(key, node, visitor, path8);
+    async function visitAsync_(key, node, visitor, path9) {
+      const ctrl = await callVisitor(key, node, visitor, path9);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path8, ctrl);
-        return visitAsync_(key, ctrl, visitor, path8);
+        replaceNode(key, path9, ctrl);
+        return visitAsync_(key, ctrl, visitor, path9);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path8 = Object.freeze(path8.concat(node));
+          path9 = Object.freeze(path9.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path8);
+            const ci = await visitAsync_(i, node.items[i], visitor, path9);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -7652,13 +7652,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path8 = Object.freeze(path8.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path8);
+          path9 = Object.freeze(path9.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path9);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path8);
+          const cv = await visitAsync_("value", node.value, visitor, path9);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -7685,23 +7685,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path8) {
+    function callVisitor(key, node, visitor, path9) {
       if (typeof visitor === "function")
-        return visitor(key, node, path8);
+        return visitor(key, node, path9);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path8);
+        return visitor.Map?.(key, node, path9);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path8);
+        return visitor.Seq?.(key, node, path9);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path8);
+        return visitor.Pair?.(key, node, path9);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path8);
+        return visitor.Scalar?.(key, node, path9);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path8);
+        return visitor.Alias?.(key, node, path9);
       return void 0;
     }
-    function replaceNode(key, path8, node) {
-      const parent = path8[path8.length - 1];
+    function replaceNode(key, path9, node) {
+      const parent = path9[path9.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -8313,10 +8313,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path8, value) {
+    function collectionFromPath(schema, path9, value) {
       let v = value;
-      for (let i = path8.length - 1; i >= 0; --i) {
-        const k = path8[i];
+      for (let i = path9.length - 1; i >= 0; --i) {
+        const k = path9[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -8335,7 +8335,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path8) => path8 == null || typeof path8 === "object" && !!path8[Symbol.iterator]().next().done;
+    var isEmptyPath = (path9) => path9 == null || typeof path9 === "object" && !!path9[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -8365,11 +8365,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path8, value) {
-        if (isEmptyPath(path8))
+      addIn(path9, value) {
+        if (isEmptyPath(path9))
           this.add(value);
         else {
-          const [key, ...rest] = path8;
+          const [key, ...rest] = path9;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -8383,8 +8383,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path8) {
-        const [key, ...rest] = path8;
+      deleteIn(path9) {
+        const [key, ...rest] = path9;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -8398,8 +8398,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path8, keepScalar) {
-        const [key, ...rest] = path8;
+      getIn(path9, keepScalar) {
+        const [key, ...rest] = path9;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -8417,8 +8417,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path8) {
-        const [key, ...rest] = path8;
+      hasIn(path9) {
+        const [key, ...rest] = path9;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -8428,8 +8428,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path8, value) {
-        const [key, ...rest] = path8;
+      setIn(path9, value) {
+        const [key, ...rest] = path9;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -10944,9 +10944,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path8, value) {
+      addIn(path9, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path8, value);
+          this.contents.addIn(path9, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -11021,14 +11021,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path8) {
-        if (Collection.isEmptyPath(path8)) {
+      deleteIn(path9) {
+        if (Collection.isEmptyPath(path9)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path8) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path9) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -11043,10 +11043,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path8, keepScalar) {
-        if (Collection.isEmptyPath(path8))
+      getIn(path9, keepScalar) {
+        if (Collection.isEmptyPath(path9))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path8, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path9, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -11057,10 +11057,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path8) {
-        if (Collection.isEmptyPath(path8))
+      hasIn(path9) {
+        if (Collection.isEmptyPath(path9))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path8) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path9) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -11077,13 +11077,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path8, value) {
-        if (Collection.isEmptyPath(path8)) {
+      setIn(path9, value) {
+        if (Collection.isEmptyPath(path9)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path8), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path9), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path8, value);
+          this.contents.setIn(path9, value);
         }
       }
       /**
@@ -13044,9 +13044,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path8) => {
+    visit.itemAtPath = (cst, path9) => {
       let item = cst;
-      for (const [field, index] of path8) {
+      for (const [field, index] of path9) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -13055,23 +13055,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path8) => {
-      const parent = visit.itemAtPath(cst, path8.slice(0, -1));
-      const field = path8[path8.length - 1][0];
+    visit.parentCollection = (cst, path9) => {
+      const parent = visit.itemAtPath(cst, path9.slice(0, -1));
+      const field = path9[path9.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path8, item, visitor) {
-      let ctrl = visitor(item, path8);
+    function _visit(path9, item, visitor) {
+      let ctrl = visitor(item, path9);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path8.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path9.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -13082,10 +13082,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path8);
+            ctrl = ctrl(item, path9);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path8) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path9) : ctrl;
     }
     exports2.visit = visit;
   }
@@ -14837,8 +14837,8 @@ var require_dist = __commonJS({
 });
 
 // src/cli/main.ts
-var import_node_child_process2 = require("node:child_process");
-var import_node_fs7 = require("node:fs");
+var import_node_child_process3 = require("node:child_process");
+var import_node_fs8 = require("node:fs");
 var import_node_util = require("node:util");
 
 // src/cli/build.ts
@@ -15343,11 +15343,11 @@ function overlaps(ev, lines) {
   for (let i = ev.start; i <= ev.end; i++) if (lines.has(i)) return true;
   return false;
 }
-function locate(evidence, path8, code, renamed, out, node) {
+function locate(evidence, path9, code, renamed, out, node) {
   let ok = true;
   const located = [];
   evidence.forEach((ev, i) => {
-    const p = `${path8}[${i}]`;
+    const p = `${path9}[${i}]`;
     if (ev.start > ev.end) {
       out.push({
         path: p,
@@ -15389,32 +15389,32 @@ function locate(evidence, path8, code, renamed, out, node) {
   });
   return ok ? located : null;
 }
-function checkNode(n, path8, depth, file, code, renamed, ids, out) {
+function checkNode(n, path9, depth, file, code, renamed, ids, out) {
   const node = { file: file.id, id: n.id };
   if (ids.has(n.id))
-    out.push({ path: path8, reason: `\uB178\uB4DC id "${n.id}"\uAC00 \uD30C\uC77C \uC548\uC5D0\uC11C \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+    out.push({ path: path9, reason: `\uB178\uB4DC id "${n.id}"\uAC00 \uD30C\uC77C \uC548\uC5D0\uC11C \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
   ids.add(n.id);
   if (depth > MAX_DEPTH)
     out.push({
-      path: path8,
+      path: path9,
       reason: `\uD2B8\uB9AC \uAE4A\uC774\uAC00 ${MAX_DEPTH}\uB2E8\uACC4\uB97C \uB118\uC2B5\uB2C8\uB2E4. \uBB36\uC5B4\uC11C \uC904\uC774\uC138\uC694.`
     });
   if (file.status === "added" && n.change !== "added")
     out.push({
-      path: path8,
+      path: path9,
       reason: "\uCD94\uAC00\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 added\uC5EC\uC57C \uD569\uB2C8\uB2E4.",
       node
     });
   if (file.status === "deleted" && n.change !== "deleted")
     out.push({
-      path: path8,
+      path: path9,
       reason: "\uC0AD\uC81C\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 deleted\uC5EC\uC57C \uD569\uB2C8\uB2E4.",
       node
     });
   if (!n.unverified) {
     const located = locate(
       n.evidence,
-      `${path8}.evidence`,
+      `${path9}.evidence`,
       code,
       renamed,
       out,
@@ -15425,33 +15425,33 @@ function checkNode(n, path8, depth, file, code, renamed, ids, out) {
       if (n.change === "added") {
         if (!located.some((l) => l.changed && l.ev.side === "head"))
           out.push({
-            path: path8,
+            path: path9,
             reason: "added \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 head\uC758 + \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
             node
           });
       } else if (n.change === "deleted") {
         if (located.some((l) => l.ev.side !== "base"))
           out.push({
-            path: path8,
+            path: path9,
             reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uB294 \uBAA8\uB450 base\uC5EC\uC57C \uD569\uB2C8\uB2E4.",
             node
           });
         if (!located.some((l) => l.changed && l.ev.side === "base"))
           out.push({
-            path: path8,
+            path: path9,
             reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 base\uC758 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
             node
           });
       } else if (n.change === "modified") {
         if (!anyChanged)
           out.push({
-            path: path8,
+            path: path9,
             reason: "modified \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 + \uB610\uB294 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC790\uC2E0\uC758 \uCF54\uB4DC\uAC00 \uADF8\uB300\uB85C\uBA74 unchanged\uB85C \uC4F0\uC138\uC694.",
             node
           });
       } else if (anyChanged) {
         out.push({
-          path: path8,
+          path: path9,
           reason: `${n.change} \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE69\uB2C8\uB2E4.`,
           node
         });
@@ -15460,7 +15460,7 @@ function checkNode(n, path8, depth, file, code, renamed, ids, out) {
     if (n.change === "affected" && n.affectedBy) {
       const cause = locate(
         n.affectedBy.evidence,
-        `${path8}.affectedBy.evidence`,
+        `${path9}.affectedBy.evidence`,
         code,
         renamed,
         out,
@@ -15468,7 +15468,7 @@ function checkNode(n, path8, depth, file, code, renamed, ids, out) {
       );
       if (cause && !cause.some((l) => l.changed))
         out.push({
-          path: path8,
+          path: path9,
           reason: "affectedBy \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC6D0\uC778\uC744 \uD2B9\uC815\uD558\uC9C0 \uBABB\uD558\uBA74 affected\uB85C \uC4F0\uC9C0 \uB9C8\uC138\uC694.",
           node
         });
@@ -15477,7 +15477,7 @@ function checkNode(n, path8, depth, file, code, renamed, ids, out) {
   n.children?.forEach(
     (c, i) => checkNode(
       c,
-      `${path8}.children[${i}]`,
+      `${path9}.children[${i}]`,
       depth + 1,
       file,
       code,
@@ -15501,45 +15501,45 @@ function checkRules(map, input, code) {
   );
   const fileIds = /* @__PURE__ */ new Map();
   map.files.forEach((f, i) => {
-    const path8 = `files[${i}]`;
+    const path9 = `files[${i}]`;
     if (fileIds.has(f.id))
-      out.push({ path: path8, reason: `\uD30C\uC77C id "${f.id}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+      out.push({ path: path9, reason: `\uD30C\uC77C id "${f.id}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
     fileIds.set(f.id, f);
     if (unclassified.has(f.path))
       out.push({
-        path: path8,
+        path: path9,
         reason: `\uBBF8\uBD84\uB958 \uD30C\uC77C ${f.path}\uB294 files\uC5D0 \uB123\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
       });
     const c = changed.get(f.path);
     if (f.status === "reference") {
       if (allChanged.has(f.path))
         out.push({
-          path: path8,
+          path: path9,
           reason: `${f.path}\uB294 \uBCC0\uACBD\uB41C \uD30C\uC77C\uC774\uB77C reference\uB85C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
         });
       else if (!code.exists("head", f.path))
-        out.push({ path: path8, reason: `\uCC38\uACE0 \uD30C\uC77C ${f.path}\uAC00 head\uC5D0 \uC5C6\uC2B5\uB2C8\uB2E4.` });
+        out.push({ path: path9, reason: `\uCC38\uACE0 \uD30C\uC77C ${f.path}\uAC00 head\uC5D0 \uC5C6\uC2B5\uB2C8\uB2E4.` });
     } else if (!c) {
       if (!unclassified.has(f.path))
         out.push({
-          path: path8,
+          path: path9,
           reason: `${f.path}\uB294 input.json\uC758 \uBCC0\uACBD \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uBCC0\uACBD \uC5C6\uB294 \uD30C\uC77C\uC740 reference\uB85C \uC4F0\uC138\uC694.`
         });
     } else {
       if (c.status !== f.status)
         out.push({
-          path: path8,
+          path: path9,
           reason: `status\uB294 input.json \uAC12(${c.status})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.`
         });
       if (c.oldPath !== f.oldPath)
         out.push({
-          path: path8,
+          path: path9,
           reason: `oldPath\uB294 input.json \uAC12(${c.oldPath ?? "\uC5C6\uC74C"})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.`
         });
     }
     const ids = /* @__PURE__ */ new Set();
     f.tree.forEach(
-      (n, j) => checkNode(n, `${path8}.tree[${j}]`, 1, f, code, renamed, ids, out)
+      (n, j) => checkNode(n, `${path9}.tree[${j}]`, 1, f, code, renamed, ids, out)
     );
   });
   map.files.forEach((f, i) => {
@@ -15552,25 +15552,25 @@ function checkRules(map, input, code) {
     });
   });
   map.edges.forEach((e, i) => {
-    const path8 = `edges[${i}]`;
+    const path9 = `edges[${i}]`;
     if (!fileIds.has(e.from))
-      out.push({ path: path8, reason: `from "${e.from}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
+      out.push({ path: path9, reason: `from "${e.from}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
     if (!fileIds.has(e.to))
-      out.push({ path: path8, reason: `to "${e.to}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
+      out.push({ path: path9, reason: `to "${e.to}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
   });
   const ordered = /* @__PURE__ */ new Set();
   map.readingOrder.forEach((step, i) => {
-    const path8 = `readingOrder[${i}]`;
+    const path9 = `readingOrder[${i}]`;
     const target = fileIds.get(step.file);
     if (!target)
-      out.push({ path: path8, reason: `\uC5C6\uB294 \uD30C\uC77C id "${step.file}"\uC785\uB2C8\uB2E4.` });
+      out.push({ path: path9, reason: `\uC5C6\uB294 \uD30C\uC77C id "${step.file}"\uC785\uB2C8\uB2E4.` });
     else if (target.status === "reference")
       out.push({
-        path: path8,
+        path: path9,
         reason: `\uCC38\uACE0 \uD30C\uC77C "${step.file}"\uB294 \uC77D\uB294 \uC21C\uC11C\uC5D0 \uB123\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
       });
     if (ordered.has(step.file))
-      out.push({ path: path8, reason: `\uD30C\uC77C id "${step.file}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+      out.push({ path: path9, reason: `\uD30C\uC77C id "${step.file}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
     ordered.add(step.file);
   });
   return out;
@@ -15916,30 +15916,30 @@ var CodeIndex = class {
   sha(side) {
     return side === "base" ? this.base : this.head;
   }
-  exists(side, path8) {
-    const key = `${side}:${path8}`;
+  exists(side, path9) {
+    const key = `${side}:${path9}`;
     let hit = this.existsCache.get(key);
     if (hit === void 0) {
-      hit = tryGit(this.root, "cat-file", "-e", `${this.sha(side)}:${path8}`) !== null;
+      hit = tryGit(this.root, "cat-file", "-e", `${this.sha(side)}:${path9}`) !== null;
       this.existsCache.set(key, hit);
     }
     return hit;
   }
-  problem(side, path8) {
+  problem(side, path9) {
     const size = tryGit(
       this.root,
       "cat-file",
       "-s",
-      `${this.sha(side)}:${path8}`
+      `${this.sha(side)}:${path9}`
     );
     if (size === null) return "not-found";
     if (Number(size.trim()) > MAX_FILE_BYTES) return "too-large";
     return null;
   }
-  read(side, path8) {
-    const problem = this.problem(side, path8);
+  read(side, path9) {
+    const problem = this.problem(side, path9);
     if (problem) return { error: problem };
-    const text = git(this.root, "show", `${this.sha(side)}:${path8}`);
+    const text = git(this.root, "show", `${this.sha(side)}:${path9}`);
     if (text.includes("\0")) return { error: "binary" };
     return { rows: plainRows(text) };
   }
@@ -15966,30 +15966,30 @@ var CodeIndex = class {
     return rows.length ? { rows } : this.read(headSide, headPath);
   }
   /** code 맵에서 쓰는 키. 이름 변경 파일은 base·head가 같은 키를 공유한다. */
-  key(side, path8) {
-    const change = side === "head" ? this.byHead.get(path8) : this.byBase.get(path8);
-    return change ? `change:${change.path}` : `${side}:${path8}`;
+  key(side, path9) {
+    const change = side === "head" ? this.byHead.get(path9) : this.byBase.get(path9);
+    return change ? `change:${change.path}` : `${side}:${path9}`;
   }
-  entry(side, path8) {
-    const key = this.key(side, path8);
+  entry(side, path9) {
+    const key = this.key(side, path9);
     const hit = this.cache.get(key);
     if (hit) return hit;
-    const change = side === "head" ? this.byHead.get(path8) : this.byBase.get(path8);
-    const entry = change ? this.diffEntry(change) : this.read(side, path8);
+    const change = side === "head" ? this.byHead.get(path9) : this.byBase.get(path9);
+    const entry = change ? this.diffEntry(change) : this.read(side, path9);
     this.cache.set(key, entry);
     return entry;
   }
-  lines(side, path8) {
-    const key = `${side}:${path8}`;
+  lines(side, path9) {
+    const key = `${side}:${path9}`;
     const hit = this.lineCache.get(key);
     if (hit !== void 0) return hit;
-    const info = this.computeLines(side, path8);
+    const info = this.computeLines(side, path9);
     this.lineCache.set(key, info);
     return info;
   }
-  computeLines(side, path8) {
-    if (!this.exists(side, path8)) return null;
-    const entry = this.entry(side, path8);
+  computeLines(side, path9) {
+    if (!this.exists(side, path9)) return null;
+    const entry = this.entry(side, path9);
     if (!("rows" in entry)) return null;
     const changed = /* @__PURE__ */ new Set();
     let lineCount = 0;
@@ -16438,10 +16438,10 @@ function parseRef(text) {
   }
   const located = WITH_PATH.exec(text);
   if (!located) return null;
-  const [, kind, path8, start, end, role] = located;
+  const [, kind, path9, start, end, role] = located;
   return {
     kind,
-    path: path8,
+    path: path9,
     start: Number(start),
     end: Number(end ?? start),
     role
@@ -16819,6 +16819,162 @@ function cmdSetup(root, opts) {
   return 0;
 }
 
+// src/cli/update.ts
+var import_node_child_process2 = require("node:child_process");
+var import_node_fs7 = require("node:fs");
+var import_node_os2 = require("node:os");
+var import_node_path8 = __toESM(require("node:path"), 1);
+var REPO = "hong-jun-il/pr-map";
+var REPO_URL = `https://github.com/${REPO}.git`;
+var CHECK_INTERVAL_MS = 24 * 60 * 60 * 1e3;
+var CHECK_TIMEOUT_MS = 5e3;
+var skillDir = () => import_node_path8.default.join(__dirname, "..");
+function cachePath() {
+  const base = process.env.XDG_CACHE_HOME || import_node_path8.default.join((0, import_node_os2.homedir)(), ".cache");
+  return import_node_path8.default.join(base, "pr-map", "update-check.json");
+}
+function readCache() {
+  try {
+    return JSON.parse((0, import_node_fs7.readFileSync)(cachePath(), "utf8"));
+  } catch {
+    return null;
+  }
+}
+function compareVersions(a, b) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (diff) return diff;
+  }
+  return 0;
+}
+function latestFromTags(output) {
+  let latest = null;
+  for (const line of output.split("\n")) {
+    const version = /\trefs\/tags\/v(\d+\.\d+\.\d+)$/.exec(line)?.[1];
+    if (version && (!latest || compareVersions(version, latest) > 0))
+      latest = version;
+  }
+  return latest;
+}
+function fetchLatest() {
+  const output = (0, import_node_child_process2.execFileSync)("git", ["ls-remote", "--tags", REPO_URL], {
+    encoding: "utf8",
+    timeout: CHECK_TIMEOUT_MS,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }
+  });
+  return latestFromTags(output);
+}
+function refreshUpdateCache(now = Date.now()) {
+  if (process.env.CI || process.env.PR_MAP_NO_UPDATE_CHECK) return;
+  const cache = readCache();
+  if (cache && now - cache.checkedAt < CHECK_INTERVAL_MS) return;
+  let latest = cache?.latest ?? null;
+  try {
+    latest = fetchLatest();
+  } catch {
+  }
+  try {
+    const file = cachePath();
+    (0, import_node_fs7.mkdirSync)(import_node_path8.default.dirname(file), { recursive: true });
+    (0, import_node_fs7.writeFileSync)(file, JSON.stringify({ checkedAt: now, latest }));
+  } catch {
+  }
+}
+function printUpdateNotice() {
+  if (process.env.CI || process.env.PR_MAP_NO_UPDATE_CHECK) return;
+  const latest = readCache()?.latest;
+  if (latest && compareVersions(latest, "0.1.0") > 0) {
+    console.log(
+      `\uC0C8 \uBC84\uC804\uC774 \uC788\uC2B5\uB2C8\uB2E4: ${"0.1.0"} \u2192 ${latest}. \uC5C5\uB370\uC774\uD2B8\uD558\uB824\uBA74 /pr-map update\uB97C \uC2E4\uD589\uD558\uC138\uC694.`
+    );
+  }
+}
+function git2(cwd, ...args) {
+  (0, import_node_child_process2.execFileSync)("git", args, {
+    cwd,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }
+  });
+}
+function isTrackedByGit(dir) {
+  try {
+    git2(dir, "ls-files", "--error-unmatch", "SKILL.md");
+    return true;
+  } catch {
+    return false;
+  }
+}
+function apply(version) {
+  const target = skillDir();
+  if (isTrackedByGit(target)) {
+    throw new CliError(
+      `${target}\uC740 Git\uC73C\uB85C \uAD00\uB9AC\uB418\uB294 \uD3F4\uB354\uB77C \uAD50\uCCB4\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uADF8 \uC800\uC7A5\uC18C\uC5D0\uC11C \uBCC0\uACBD\uD574 \uCEE4\uBC0B\uD558\uC138\uC694.`
+    );
+  }
+  const temp = (0, import_node_fs7.mkdtempSync)(import_node_path8.default.join((0, import_node_os2.tmpdir)(), "pr-map-update-"));
+  const parent = import_node_path8.default.dirname(target);
+  const incoming = `${target}.new-${process.pid}`;
+  const backup = `${target}.old-${process.pid}`;
+  try {
+    try {
+      git2(temp, "clone", "-q", "--depth", "1", "--branch", `v${version}`, REPO_URL, "src");
+    } catch (err) {
+      throw new CliError(
+        `v${version}\uC744 \uB0B4\uB824\uBC1B\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
+${err.stderr?.toString().trim() ?? ""}`.trim()
+      );
+    }
+    const source = import_node_path8.default.join(temp, "src", "skill", "pr-map");
+    for (const file of ["SKILL.md", "scripts/pr-map.js"]) {
+      if (!(0, import_node_fs7.existsSync)(import_node_path8.default.join(source, file)))
+        throw new CliError(`v${version}\uC5D0 ${file}\uC774 \uC5C6\uC5B4 \uAD50\uCCB4\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.`);
+    }
+    (0, import_node_fs7.cpSync)(source, incoming, { recursive: true });
+    (0, import_node_fs7.renameSync)(target, backup);
+    try {
+      (0, import_node_fs7.renameSync)(incoming, target);
+    } catch (err) {
+      (0, import_node_fs7.renameSync)(backup, target);
+      throw new CliError(`${parent}\uC5D0 \uC124\uCE58\uD558\uC9C0 \uBABB\uD574 \uC6D0\uB798 \uBC84\uC804\uC744 \uC720\uC9C0\uD569\uB2C8\uB2E4: ${err.message}`);
+    }
+    (0, import_node_fs7.rmSync)(backup, { recursive: true, force: true });
+  } finally {
+    (0, import_node_fs7.rmSync)(incoming, { recursive: true, force: true });
+    (0, import_node_fs7.rmSync)(temp, { recursive: true, force: true });
+  }
+  console.log(`${version}\uC73C\uB85C \uC5C5\uB370\uC774\uD2B8\uD588\uC2B5\uB2C8\uB2E4: ${target}`);
+  console.log("\uC0C8 \uC138\uC158\uBD80\uD130 \uC801\uC6A9\uB429\uB2C8\uB2E4.");
+}
+function cmdUpdate(opts) {
+  let latest;
+  try {
+    latest = fetchLatest();
+  } catch {
+    throw new CliError("\uCD5C\uC2E0 \uBC84\uC804\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB124\uD2B8\uC6CC\uD06C\uB97C \uD655\uC778\uD558\uC138\uC694.");
+  }
+  console.log(`\uC124\uCE58 \uBC84\uC804: ${"0.1.0"}`);
+  console.log(`\uC124\uCE58 \uC704\uCE58: ${skillDir()}`);
+  if (!latest) {
+    console.log("\uBC30\uD3EC\uB41C \uBC84\uC804\uC774 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    return 0;
+  }
+  console.log(`\uCD5C\uC2E0 \uBC84\uC804: ${latest}`);
+  if (compareVersions(latest, "0.1.0") <= 0) {
+    console.log("\uC774\uBBF8 \uCD5C\uC2E0 \uBC84\uC804\uC785\uB2C8\uB2E4.");
+    return 0;
+  }
+  if (!opts.apply) {
+    console.log(`\uBCC0\uACBD \uB0B4\uC6A9: https://github.com/${REPO}/tree/v${latest}`);
+    console.log("\uC801\uC6A9\uD558\uB824\uBA74 update --apply\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
+    return 0;
+  }
+  apply(latest);
+  return 0;
+}
+
 // src/cli/main.ts
 var MAX_ATTEMPTS = 3;
 function requireInput(root) {
@@ -16861,13 +17017,13 @@ function cmdCollect(root, opts) {
 function cmdValidate(root) {
   const input = requireInput(root);
   const file = mapPath(root);
-  if (!(0, import_node_fs7.existsSync)(file))
+  if (!(0, import_node_fs8.existsSync)(file))
     throw new CliError(
       ".pr-map/pr-map.json\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBD84\uC11D \uACB0\uACFC\uB97C \uBA3C\uC800 \uC791\uC131\uD558\uC138\uC694."
     );
   let map;
   try {
-    map = JSON.parse((0, import_node_fs7.readFileSync)(file, "utf8"));
+    map = JSON.parse((0, import_node_fs8.readFileSync)(file, "utf8"));
   } catch (err) {
     throw new CliError(
       `pr-map.json\uC744 JSON\uC73C\uB85C \uC77D\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${err.message}`
@@ -16974,13 +17130,13 @@ function statusData(root) {
     return {
       status: "failed",
       pr: input.pr,
-      errors: state.errors.map(({ path: path8, reason }) => ({ path: path8, reason }))
+      errors: state.errors.map(({ path: path9, reason }) => ({ path: path9, reason }))
     };
   return { status: "analyzing", pr: input.pr, changed: input.files.length };
 }
 function openInBrowser(file) {
   const [cmd, args] = process.platform === "darwin" ? ["open", [file]] : process.platform === "win32" ? ["cmd", ["/c", "start", "", file]] : ["xdg-open", [file]];
-  const child = (0, import_node_child_process2.spawn)(cmd, args, {
+  const child = (0, import_node_child_process3.spawn)(cmd, args, {
     detached: true,
     stdio: "ignore"
   });
@@ -17027,11 +17183,11 @@ function cmdPublish(root) {
     return;
   }
   const file = commentPath(root);
-  if (!(0, import_node_fs7.existsSync)(file))
+  if (!(0, import_node_fs8.existsSync)(file))
     throw new CliError("comment.md\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 build\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
   const viewerUrl = process.env.PR_MAP_VIEWER_URL;
   const data = /^https:\/\/\S+$/.test(viewerUrl ?? "") ? readJsonIfExists(viewerDataPath(root)) : null;
-  const body = data ? buildComment(data, { viewerUrl }) : (0, import_node_fs7.readFileSync)(file, "utf8");
+  const body = data ? buildComment(data, { viewerUrl }) : (0, import_node_fs8.readFileSync)(file, "utf8");
   const { repo, number, head } = input.pr;
   const latest = latestHead(root, input);
   if (latest && latest !== head)
@@ -17095,7 +17251,8 @@ var USAGE = `\uC0AC\uC6A9\uBC95: pr-map <\uBA85\uB839>
   setup                                 \uC790\uB3D9 \uC2E4\uD589 \uC124\uCE58 \uC0C1\uD0DC\uC640 \uB2E4\uC74C \uB2E8\uACC4\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4
   setup --install [--force]             \uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 \uBE0C\uB79C\uCE58\uB97C \uC62C\uB9AC\uACE0 PR\uC744 \uB9CC\uB4ED\uB2C8\uB2E4
   setup --secret-from-env               \uD658\uACBD\uBCC0\uC218\uC758 API \uD0A4\uB97C \uC800\uC7A5\uC18C \uC2DC\uD06C\uB9BF\uC73C\uB85C \uB4F1\uB85D\uD569\uB2C8\uB2E4
-  clean                                 \uC774 \uD074\uB860\uC758 .pr-map/\uACFC .git/info/exclude \uC904\uC744 \uC9C0\uC6C1\uB2C8\uB2E4`;
+  clean                                 \uC774 \uD074\uB860\uC758 .pr-map/\uACFC .git/info/exclude \uC904\uC744 \uC9C0\uC6C1\uB2C8\uB2E4
+  update [--apply]                      \uC0C8 \uBC84\uC804\uC744 \uD655\uC778\uD558\uACE0, --apply\uBA74 \uC2A4\uD0AC \uD3F4\uB354\uB97C \uAD50\uCCB4\uD569\uB2C8\uB2E4`;
 function main() {
   const [command, ...rest] = process.argv.slice(2);
   const { values } = (0, import_node_util.parseArgs)({
@@ -17106,7 +17263,8 @@ function main() {
       "no-open": { type: "boolean" },
       install: { type: "boolean" },
       force: { type: "boolean" },
-      "secret-from-env": { type: "boolean" }
+      "secret-from-env": { type: "boolean" },
+      apply: { type: "boolean" }
     },
     allowPositionals: false
   });
@@ -17114,6 +17272,7 @@ function main() {
     console.log(USAGE);
     return command ? 0 : 1;
   }
+  if (command === "update") return cmdUpdate({ apply: !!values.apply });
   const root = repoRoot(process.cwd());
   switch (command) {
     case "collect": {
@@ -17121,6 +17280,7 @@ function main() {
       if (pr !== void 0 && (!Number.isInteger(pr) || pr < 1))
         throw new CliError("--pr\uC5D0\uB294 PR \uBC88\uD638\uB97C \uC4F0\uC138\uC694.");
       cmdCollect(root, { pr, base: values.base });
+      refreshUpdateCache();
       return 0;
     }
     case "validate":
@@ -17130,9 +17290,11 @@ function main() {
       return 0;
     case "publish":
       cmdPublish(root);
+      printUpdateNotice();
       return 0;
     case "view":
       cmdView(root, { open: !values["no-open"] });
+      printUpdateNotice();
       return 0;
     case "clean":
       cmdClean(root);

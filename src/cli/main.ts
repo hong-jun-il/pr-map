@@ -26,6 +26,7 @@ import {
 import { cmdClean } from "./clean";
 import { expandCompactRefs } from "./compact";
 import { cmdSetup } from "./setup";
+import { cmdUpdate, printUpdateNotice, refreshUpdateCache } from "./update";
 import {
   checkRules,
   checkSchema,
@@ -355,7 +356,8 @@ const USAGE = `사용법: pr-map <명령>
   setup                                 자동 실행 설치 상태와 다음 단계를 보여줍니다
   setup --install [--force]             워크플로 설치 브랜치를 올리고 PR을 만듭니다
   setup --secret-from-env               환경변수의 API 키를 저장소 시크릿으로 등록합니다
-  clean                                 이 클론의 .pr-map/과 .git/info/exclude 줄을 지웁니다`;
+  clean                                 이 클론의 .pr-map/과 .git/info/exclude 줄을 지웁니다
+  update [--apply]                      새 버전을 확인하고, --apply면 스킬 폴더를 교체합니다`;
 
 function main(): number {
   const [command, ...rest] = process.argv.slice(2);
@@ -368,6 +370,7 @@ function main(): number {
       install: { type: "boolean" },
       force: { type: "boolean" },
       "secret-from-env": { type: "boolean" },
+      apply: { type: "boolean" },
     },
     allowPositionals: false,
   });
@@ -375,6 +378,8 @@ function main(): number {
     console.log(USAGE);
     return command ? 0 : 1;
   }
+  // 스킬 폴더만 다루므로 분석할 저장소 밖에서도 실행할 수 있다.
+  if (command === "update") return cmdUpdate({ apply: !!values.apply });
   const root = repoRoot(process.cwd());
   switch (command) {
     case "collect": {
@@ -382,6 +387,7 @@ function main(): number {
       if (pr !== undefined && (!Number.isInteger(pr) || pr < 1))
         throw new CliError("--pr에는 PR 번호를 쓰세요.");
       cmdCollect(root, { pr, base: values.base });
+      refreshUpdateCache();
       return 0;
     }
     case "validate":
@@ -391,9 +397,11 @@ function main(): number {
       return 0;
     case "publish":
       cmdPublish(root);
+      printUpdateNotice();
       return 0;
     case "view":
       cmdView(root, { open: !values["no-open"] });
+      printUpdateNotice();
       return 0;
     case "clean":
       cmdClean(root);
