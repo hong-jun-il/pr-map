@@ -7,6 +7,8 @@
 set -euo pipefail
 
 script="$GITHUB_ACTION_PATH/skill/pr-map/scripts/pr-map.js"
+# 상대 경로 규칙은 에이전트가 cd하면 기준이 옮겨져 결과 파일 쓰기까지 막는다. 절대 경로로 고정한다.
+workspace=$(pwd -P)
 
 # 권한 규칙 없이 읽을 수 있도록 지시문과 스키마를 작업 폴더로 복사한다.
 rm -rf .pr-map/skill
@@ -36,7 +38,7 @@ CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 DISABLE_AUTOUPDATER=1 claude -p "$prompt" \
   --tools "Read,Grep,Glob,Edit,Write,Bash" \
   --allowedTools \
     "Read" "Grep" "Glob" \
-    "Edit(.pr-map/**)" \
+    "Edit(/$workspace/.pr-map/**)" \
     "Bash(node $script validate)" \
     "Bash(git show *)" "Bash(git diff *)" "Bash(git log *)" \
   > "$result" || status=$?

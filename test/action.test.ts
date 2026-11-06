@@ -1,5 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
@@ -56,6 +62,19 @@ describe("action.yml 권한 경계", () => {
     const ids = ["install-claude", "analyze", "build", "publish"];
     for (const id of ids)
       expect(step(id).if).toBe("steps.collect.outputs.skip != 'true'");
+  });
+
+  it("워크플로 템플릿은 라벨 변경만으로 분석을 다시 돌리지 않는다", () => {
+    const workflow = parse(
+      readFileSync("skill/pr-map/assets/pr-map.yml", "utf8"),
+    );
+    expect(workflow.on.pull_request.types).toEqual([
+      "opened",
+      "synchronize",
+      "reopened",
+      "ready_for_review",
+    ]);
+    expect(workflow.jobs["pr-map"].if).toContain("'no-pr-map'");
   });
 
   it("워크플로 템플릿은 토큰을 체크아웃에 남기지 않고 PR 커밋을 받는다", () => {
@@ -228,7 +247,9 @@ describe("액션 단계 실행", () => {
     // 환경변수 정리를 켜면 CLI가 권한 모드를 default로 강제하므로 넘기지 않는다.
     expect(call.args).not.toContain("--permission-mode");
     expect(value("--tools")).toBe("Read,Grep,Glob,Edit,Write,Bash");
-    expect(call.args).toContain("Edit(.pr-map/**)");
+    // 에이전트가 cd해도 결과 파일을 쓸 수 있게 절대 경로 규칙을 쓴다.
+    expect(call.args).toContain(`Edit(/${realpathSync(fx.root)}/.pr-map/**)`);
+    expect(call.args).not.toContain("Edit(.pr-map/**)");
     expect(call.args).toContain(
       `Bash(node ${ACTION_ROOT}/skill/pr-map/scripts/pr-map.js validate)`,
     );

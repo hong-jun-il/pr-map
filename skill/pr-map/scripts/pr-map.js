@@ -15002,6 +15002,7 @@ var import_node_fs = require("node:fs");
 var import_node_path = __toESM(require("node:path"), 1);
 var outDir = (root) => import_node_path.default.join(root, ".pr-map");
 var inputPath = (root) => import_node_path.default.join(outDir(root), "input.json");
+var diffPath = (root) => import_node_path.default.join(outDir(root), "diff.txt");
 var mapPath = (root) => import_node_path.default.join(outDir(root), "pr-map.json");
 var statePath = (root) => import_node_path.default.join(outDir(root), "validate-state.json");
 var viewerDataPath = (root) => import_node_path.default.join(outDir(root), "viewer-data.json");
@@ -15172,6 +15173,7 @@ var pr_map_schema_default = {
       ]
     },
     evidence: {
+      description: "validate\uAC00 \uD3BC\uCE5C \uB4A4\uC758 \uD615\uC2DD. AI\uB294 SKILL.md\uC758 \uC9E7\uC740 \uBB38\uC790\uC5F4\uB85C \uC4F4\uB2E4.",
       type: "object",
       required: ["side", "path", "start", "end", "role"],
       additionalProperties: false,
@@ -15184,7 +15186,7 @@ var pr_map_schema_default = {
       }
     },
     testEvidence: {
-      description: "head \uCEE4\uBC0B\uC758 \uD14C\uC2A4\uD2B8 \uCF54\uB4DC \uC704\uCE58",
+      description: "head \uCEE4\uBC0B\uC758 \uD14C\uC2A4\uD2B8 \uCF54\uB4DC \uC704\uCE58. validate\uAC00 \uD3BC\uCE5C \uB4A4\uC758 \uD615\uC2DD\uC774\uBA70 AI\uB294 \uC9E7\uC740 \uBB38\uC790\uC5F4\uB85C \uC4F4\uB2E4.",
       type: "object",
       required: ["path", "start", "end", "role"],
       additionalProperties: false,
@@ -16164,6 +16166,46 @@ function collectCandidates(root, base, head, files) {
   );
 }
 
+// src/cli/diff.ts
+var MAX_ROWS_PER_FILE = 400;
+var MAX_LINE_CHARS = 240;
+var HEADER = `# \uBCC0\uACBD \uB0B4\uC6A9. \uC5F4 \uC21C\uC11C: head \uC904 \uBC88\uD638, base \uC904 \uBC88\uD638, \uBCC0\uACBD \uAE30\uD638, \uCF54\uB4DC.
+# +\uB294 head\uC5D0\uB9CC, -\uB294 base\uC5D0\uB9CC \uC788\uB294 \uC904\uC774\uB2E4. \uC5C6\uB294 \uCABD \uC904 \uBC88\uD638\uB294 . \uC73C\uB85C \uD45C\uC2DC\uD55C\uB2E4. \u2026\uB294 \uC0AC\uC774 \uCF54\uB4DC\uB97C \uC0DD\uB7B5\uD55C \uC790\uB9AC\uB2E4.
+`;
+function formatDiffRows(rows) {
+  const lines = [];
+  let lastHead = 0;
+  let lastBase = 0;
+  for (const row of rows.slice(0, MAX_ROWS_PER_FILE)) {
+    const jumped = row.n > 0 && lastHead > 0 && row.n !== lastHead + 1 || row.o > 0 && lastBase > 0 && row.o !== lastBase + 1;
+    if (jumped) lines.push("\u2026");
+    if (row.n > 0) lastHead = row.n;
+    if (row.o > 0) lastBase = row.o;
+    const text = row.t.length > MAX_LINE_CHARS ? `${row.t.slice(0, MAX_LINE_CHARS)}\u2026` : row.t;
+    lines.push(`${row.n || "."} ${row.o || "."} ${row.d} ${text}`.trimEnd());
+  }
+  const omitted = rows.length - MAX_ROWS_PER_FILE;
+  if (omitted > 0)
+    lines.push(`\u2026 ${omitted}\uC904 \uC0DD\uB7B5. \uD544\uC694\uD558\uBA74 git diff\uB85C \uC774 \uD30C\uC77C\uB9CC \uC77D\uB294\uB2E4.`);
+  return lines.join("\n");
+}
+function fileDiff(root, base, head, file) {
+  const title = `## ${file.path}${file.oldPath ? ` (\uC774\uC804 \uACBD\uB85C ${file.oldPath})` : ""} \xB7 ${file.status} +${file.additions} -${file.deletions}`;
+  if (file.binary) return `${title}
+\uBC14\uC774\uB108\uB9AC \uD30C\uC77C\uC774\uB77C \uB0B4\uC6A9\uC744 \uC2E3\uC9C0 \uC54A\uC558\uB2E4.`;
+  const paths = file.oldPath ? [file.oldPath, file.path] : [file.path];
+  const diff = tryGit(root, "diff", "-M", "-U3", base, head, "--", ...paths);
+  if (diff === null) return `${title}
+\uBCC0\uACBD \uB0B4\uC6A9\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4. git diff\uB85C \uC77D\uB294\uB2E4.`;
+  return `${title}
+${formatDiffRows(parseUnifiedDiff(diff))}`;
+}
+function buildDiffText(root, base, head, files) {
+  return `${HEADER}
+${files.map((f) => fileDiff(root, base, head, f)).join("\n\n")}
+`;
+}
+
 // src/cli/collect.ts
 function parseChanges(nameStatusZ, numstatZ) {
   const stats = /* @__PURE__ */ new Map();
@@ -16333,6 +16375,11 @@ function collect(cwd, opts) {
     previous: readJsonIfExists(mapPath(root))
   };
   writeJson(inputPath(root), input);
+  const changedTests = unclassified.filter((f) => f.category === "test");
+  writeText(
+    diffPath(root),
+    buildDiffText(root, mergeBase, head, [...files, ...changedTests])
+  );
   writeJson(statePath(root), { head, attempts: 0, errors: [] });
   excludeOutput(root);
   return input;
@@ -16373,6 +16420,102 @@ function cmdClean(root) {
   console.log(
     "\uC2A4\uD0AC, \uC790\uB3D9 \uC2E4\uD589 \uC6CC\uD06C\uD50C\uB85C, PR \uB313\uAE00\uC740 \uADF8\uB300\uB85C \uC788\uC2B5\uB2C8\uB2E4. \uC9C0\uC6B0\uB294 \uBC29\uBC95\uC740 README\uC758 \uC81C\uAC70 \uC808\uCC28\uB97C \uBCF4\uC138\uC694."
   );
+}
+
+// src/cli/compact.ts
+var LOCAL = /^([hb]):(\d+)(?:-(\d+))? (\S.*)$/;
+var WITH_PATH = /^([hbt]):(.+?):(\d+)(?:-(\d+))? (\S.*)$/;
+function parseRef(text) {
+  const local = LOCAL.exec(text);
+  if (local) {
+    const [, kind2, start2, end2, role2] = local;
+    return {
+      kind: kind2,
+      start: Number(start2),
+      end: Number(end2 ?? start2),
+      role: role2
+    };
+  }
+  const located = WITH_PATH.exec(text);
+  if (!located) return null;
+  const [, kind, path8, start, end, role] = located;
+  return {
+    kind,
+    path: path8,
+    start: Number(start),
+    end: Number(end ?? start),
+    role
+  };
+}
+var isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function expandEvidence(list, where, paths, problems) {
+  if (!Array.isArray(list)) return;
+  list.forEach((item, i) => {
+    if (typeof item !== "string") return;
+    const ref = parseRef(item);
+    if (!ref || ref.kind === "t") {
+      problems.push({
+        path: `${where}[${i}]`,
+        reason: `\uADFC\uAC70 \uD615\uC2DD\uC774 \uC544\uB2D9\uB2C8\uB2E4: ${JSON.stringify(item)}. \uC608: "h:276 \uC5ED\uD560", "b:10-12 \uC5ED\uD560", "h:src/a.ts:10-12 \uC5ED\uD560"`
+      });
+      return;
+    }
+    const side = ref.kind === "h" ? "head" : "base";
+    list[i] = {
+      side,
+      path: ref.path ?? paths[side],
+      start: ref.start,
+      end: ref.end,
+      role: ref.role
+    };
+  });
+}
+function expandTests(list, where, problems) {
+  if (!Array.isArray(list)) return;
+  list.forEach((item, i) => {
+    if (typeof item !== "string") return;
+    const ref = parseRef(item);
+    if (!ref || ref.kind !== "t") {
+      problems.push({
+        path: `${where}[${i}]`,
+        reason: `\uD14C\uC2A4\uD2B8 \uC5F0\uACB0 \uD615\uC2DD\uC774 \uC544\uB2D9\uB2C8\uB2E4: ${JSON.stringify(item)}. \uC608: "t:tests/a.test.ts:10-12 \uC5ED\uD560"`
+      });
+      return;
+    }
+    list[i] = {
+      path: ref.path,
+      start: ref.start,
+      end: ref.end,
+      role: ref.role
+    };
+  });
+}
+function expandNodes(nodes, where, paths, problems) {
+  if (!Array.isArray(nodes)) return;
+  nodes.forEach((node, i) => {
+    if (!isRecord(node)) return;
+    const at = `${where}[${i}]`;
+    expandEvidence(node.evidence, `${at}.evidence`, paths, problems);
+    if (isRecord(node.affectedBy))
+      expandEvidence(
+        node.affectedBy.evidence,
+        `${at}.affectedBy.evidence`,
+        paths,
+        problems
+      );
+    expandTests(node.tests, `${at}.tests`, problems);
+    expandNodes(node.children, `${at}.children`, paths, problems);
+  });
+}
+function expandCompactRefs(map) {
+  const problems = [];
+  if (!isRecord(map) || !Array.isArray(map.files)) return problems;
+  map.files.forEach((file, i) => {
+    if (!isRecord(file)) return;
+    const paths = { head: file.path, base: file.oldPath ?? file.path };
+    expandNodes(file.tree, `files[${i}].tree`, paths, problems);
+  });
+  return problems;
 }
 
 // src/cli/setup.ts
@@ -16741,7 +16884,8 @@ function cmdValidate(root) {
   };
   if (map && typeof map === "object" && map.pr && typeof map.pr === "object")
     normalize(map, input);
-  const schemaProblems = checkSchema(map);
+  const refProblems = expandCompactRefs(map);
+  const schemaProblems = refProblems.length ? refProblems : checkSchema(map);
   if (schemaProblems.length) {
     state.attempts += 1;
     console.log(
