@@ -1,0 +1,25 @@
+name: PR 제목 검사
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  title:
+    name: PR 제목 형식
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          types='feat|fix|docs|refactor|test|chore|ci'
+          scopes='cli|viewer|action|skill|setup'
+          pattern="^($types)(\(($scopes)\))?!?: .+"
+
+          if ! [[ "$TITLE" =~ $pattern ]]; then
+            echo "::error::PR 제목은 '타입(범위): 설명' 형식이어야 합니다."
+            echo "타입: ${types//|/, }"
+            echo "범위(선택): ${scopes//|/, }"
+            exit 1
+          fi
