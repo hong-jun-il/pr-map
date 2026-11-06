@@ -15172,6 +15172,7 @@ var pr_map_schema_default = {
       ]
     },
     evidence: {
+      description: "validate\uAC00 \uD3BC\uCE5C \uB4A4\uC758 \uD615\uC2DD. AI\uB294 SKILL.md\uC758 \uC9E7\uC740 \uBB38\uC790\uC5F4\uB85C \uC4F4\uB2E4.",
       type: "object",
       required: ["side", "path", "start", "end", "role"],
       additionalProperties: false,
@@ -15184,7 +15185,7 @@ var pr_map_schema_default = {
       }
     },
     testEvidence: {
-      description: "head \uCEE4\uBC0B\uC758 \uD14C\uC2A4\uD2B8 \uCF54\uB4DC \uC704\uCE58",
+      description: "head \uCEE4\uBC0B\uC758 \uD14C\uC2A4\uD2B8 \uCF54\uB4DC \uC704\uCE58. validate\uAC00 \uD3BC\uCE5C \uB4A4\uC758 \uD615\uC2DD\uC774\uBA70 AI\uB294 \uC9E7\uC740 \uBB38\uC790\uC5F4\uB85C \uC4F4\uB2E4.",
       type: "object",
       required: ["path", "start", "end", "role"],
       additionalProperties: false,
@@ -16375,6 +16376,102 @@ function cmdClean(root) {
   );
 }
 
+// src/cli/compact.ts
+var LOCAL = /^([hb]):(\d+)(?:-(\d+))? (\S.*)$/;
+var WITH_PATH = /^([hbt]):(.+?):(\d+)(?:-(\d+))? (\S.*)$/;
+function parseRef(text) {
+  const local = LOCAL.exec(text);
+  if (local) {
+    const [, kind2, start2, end2, role2] = local;
+    return {
+      kind: kind2,
+      start: Number(start2),
+      end: Number(end2 ?? start2),
+      role: role2
+    };
+  }
+  const located = WITH_PATH.exec(text);
+  if (!located) return null;
+  const [, kind, path8, start, end, role] = located;
+  return {
+    kind,
+    path: path8,
+    start: Number(start),
+    end: Number(end ?? start),
+    role
+  };
+}
+var isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function expandEvidence(list, where, paths, problems) {
+  if (!Array.isArray(list)) return;
+  list.forEach((item, i) => {
+    if (typeof item !== "string") return;
+    const ref = parseRef(item);
+    if (!ref || ref.kind === "t") {
+      problems.push({
+        path: `${where}[${i}]`,
+        reason: `\uADFC\uAC70 \uD615\uC2DD\uC774 \uC544\uB2D9\uB2C8\uB2E4: ${JSON.stringify(item)}. \uC608: "h:276 \uC5ED\uD560", "b:10-12 \uC5ED\uD560", "h:src/a.ts:10-12 \uC5ED\uD560"`
+      });
+      return;
+    }
+    const side = ref.kind === "h" ? "head" : "base";
+    list[i] = {
+      side,
+      path: ref.path ?? paths[side],
+      start: ref.start,
+      end: ref.end,
+      role: ref.role
+    };
+  });
+}
+function expandTests(list, where, problems) {
+  if (!Array.isArray(list)) return;
+  list.forEach((item, i) => {
+    if (typeof item !== "string") return;
+    const ref = parseRef(item);
+    if (!ref || ref.kind !== "t") {
+      problems.push({
+        path: `${where}[${i}]`,
+        reason: `\uD14C\uC2A4\uD2B8 \uC5F0\uACB0 \uD615\uC2DD\uC774 \uC544\uB2D9\uB2C8\uB2E4: ${JSON.stringify(item)}. \uC608: "t:tests/a.test.ts:10-12 \uC5ED\uD560"`
+      });
+      return;
+    }
+    list[i] = {
+      path: ref.path,
+      start: ref.start,
+      end: ref.end,
+      role: ref.role
+    };
+  });
+}
+function expandNodes(nodes, where, paths, problems) {
+  if (!Array.isArray(nodes)) return;
+  nodes.forEach((node, i) => {
+    if (!isRecord(node)) return;
+    const at = `${where}[${i}]`;
+    expandEvidence(node.evidence, `${at}.evidence`, paths, problems);
+    if (isRecord(node.affectedBy))
+      expandEvidence(
+        node.affectedBy.evidence,
+        `${at}.affectedBy.evidence`,
+        paths,
+        problems
+      );
+    expandTests(node.tests, `${at}.tests`, problems);
+    expandNodes(node.children, `${at}.children`, paths, problems);
+  });
+}
+function expandCompactRefs(map) {
+  const problems = [];
+  if (!isRecord(map) || !Array.isArray(map.files)) return problems;
+  map.files.forEach((file, i) => {
+    if (!isRecord(file)) return;
+    const paths = { head: file.path, base: file.oldPath ?? file.path };
+    expandNodes(file.tree, `files[${i}].tree`, paths, problems);
+  });
+  return problems;
+}
+
 // src/cli/setup.ts
 var import_node_fs6 = require("node:fs");
 var import_node_os = require("node:os");
@@ -16741,7 +16838,8 @@ function cmdValidate(root) {
   };
   if (map && typeof map === "object" && map.pr && typeof map.pr === "object")
     normalize(map, input);
-  const schemaProblems = checkSchema(map);
+  const refProblems = expandCompactRefs(map);
+  const schemaProblems = refProblems.length ? refProblems : checkSchema(map);
   if (schemaProblems.length) {
     state.attempts += 1;
     console.log(

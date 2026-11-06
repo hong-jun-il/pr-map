@@ -24,6 +24,7 @@ import {
   writeJson,
 } from "./paths";
 import { cmdClean } from "./clean";
+import { expandCompactRefs } from "./compact";
 import { cmdSetup } from "./setup";
 import {
   checkRules,
@@ -114,7 +115,8 @@ function cmdValidate(root: string): number {
 
   if (map && typeof map === "object" && map.pr && typeof map.pr === "object")
     normalize(map, input);
-  const schemaProblems = checkSchema(map);
+  const refProblems = expandCompactRefs(map);
+  const schemaProblems = refProblems.length ? refProblems : checkSchema(map);
   if (schemaProblems.length) {
     state.attempts += 1;
     console.log(

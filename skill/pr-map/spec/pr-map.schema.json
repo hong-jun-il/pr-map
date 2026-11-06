@@ -145,6 +145,7 @@
       ]
     },
     "evidence": {
+      "description": "validate가 펼친 뒤의 형식. AI는 SKILL.md의 짧은 문자열로 쓴다.",
       "type": "object",
       "required": ["side", "path", "start", "end", "role"],
       "additionalProperties": false,
@@ -157,7 +158,7 @@
       }
     },
     "testEvidence": {
-      "description": "head 커밋의 테스트 코드 위치",
+      "description": "head 커밋의 테스트 코드 위치. validate가 펼친 뒤의 형식이며 AI는 짧은 문자열로 쓴다.",
       "type": "object",
       "required": ["path", "start", "end", "role"],
       "additionalProperties": false,
