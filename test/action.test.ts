@@ -58,6 +58,19 @@ describe("action.yml 권한 경계", () => {
       expect(step(id).if).toBe("steps.collect.outputs.skip != 'true'");
   });
 
+  it("워크플로 템플릿은 라벨 변경만으로 분석을 다시 돌리지 않는다", () => {
+    const workflow = parse(
+      readFileSync("skill/pr-map/assets/pr-map.yml", "utf8"),
+    );
+    expect(workflow.on.pull_request.types).toEqual([
+      "opened",
+      "synchronize",
+      "reopened",
+      "ready_for_review",
+    ]);
+    expect(workflow.jobs["pr-map"].if).toContain("'no-pr-map'");
+  });
+
   it("워크플로 템플릿은 토큰을 체크아웃에 남기지 않고 PR 커밋을 받는다", () => {
     const workflow = parse(
       readFileSync("skill/pr-map/assets/pr-map.yml", "utf8"),
