@@ -15002,6 +15002,7 @@ var import_node_fs = require("node:fs");
 var import_node_path = __toESM(require("node:path"), 1);
 var outDir = (root) => import_node_path.default.join(root, ".pr-map");
 var inputPath = (root) => import_node_path.default.join(outDir(root), "input.json");
+var diffPath = (root) => import_node_path.default.join(outDir(root), "diff.txt");
 var mapPath = (root) => import_node_path.default.join(outDir(root), "pr-map.json");
 var statePath = (root) => import_node_path.default.join(outDir(root), "validate-state.json");
 var viewerDataPath = (root) => import_node_path.default.join(outDir(root), "viewer-data.json");
@@ -16165,6 +16166,46 @@ function collectCandidates(root, base, head, files) {
   );
 }
 
+// src/cli/diff.ts
+var MAX_ROWS_PER_FILE = 400;
+var MAX_LINE_CHARS = 240;
+var HEADER = `# \uBCC0\uACBD \uB0B4\uC6A9. \uC5F4 \uC21C\uC11C: head \uC904 \uBC88\uD638, base \uC904 \uBC88\uD638, \uBCC0\uACBD \uAE30\uD638, \uCF54\uB4DC.
+# +\uB294 head\uC5D0\uB9CC, -\uB294 base\uC5D0\uB9CC \uC788\uB294 \uC904\uC774\uB2E4. \uC5C6\uB294 \uCABD \uC904 \uBC88\uD638\uB294 . \uC73C\uB85C \uD45C\uC2DC\uD55C\uB2E4. \u2026\uB294 \uC0AC\uC774 \uCF54\uB4DC\uB97C \uC0DD\uB7B5\uD55C \uC790\uB9AC\uB2E4.
+`;
+function formatDiffRows(rows) {
+  const lines = [];
+  let lastHead = 0;
+  let lastBase = 0;
+  for (const row of rows.slice(0, MAX_ROWS_PER_FILE)) {
+    const jumped = row.n > 0 && lastHead > 0 && row.n !== lastHead + 1 || row.o > 0 && lastBase > 0 && row.o !== lastBase + 1;
+    if (jumped) lines.push("\u2026");
+    if (row.n > 0) lastHead = row.n;
+    if (row.o > 0) lastBase = row.o;
+    const text = row.t.length > MAX_LINE_CHARS ? `${row.t.slice(0, MAX_LINE_CHARS)}\u2026` : row.t;
+    lines.push(`${row.n || "."} ${row.o || "."} ${row.d} ${text}`.trimEnd());
+  }
+  const omitted = rows.length - MAX_ROWS_PER_FILE;
+  if (omitted > 0)
+    lines.push(`\u2026 ${omitted}\uC904 \uC0DD\uB7B5. \uD544\uC694\uD558\uBA74 git diff\uB85C \uC774 \uD30C\uC77C\uB9CC \uC77D\uB294\uB2E4.`);
+  return lines.join("\n");
+}
+function fileDiff(root, base, head, file) {
+  const title = `## ${file.path}${file.oldPath ? ` (\uC774\uC804 \uACBD\uB85C ${file.oldPath})` : ""} \xB7 ${file.status} +${file.additions} -${file.deletions}`;
+  if (file.binary) return `${title}
+\uBC14\uC774\uB108\uB9AC \uD30C\uC77C\uC774\uB77C \uB0B4\uC6A9\uC744 \uC2E3\uC9C0 \uC54A\uC558\uB2E4.`;
+  const paths = file.oldPath ? [file.oldPath, file.path] : [file.path];
+  const diff = tryGit(root, "diff", "-M", "-U3", base, head, "--", ...paths);
+  if (diff === null) return `${title}
+\uBCC0\uACBD \uB0B4\uC6A9\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4. git diff\uB85C \uC77D\uB294\uB2E4.`;
+  return `${title}
+${formatDiffRows(parseUnifiedDiff(diff))}`;
+}
+function buildDiffText(root, base, head, files) {
+  return `${HEADER}
+${files.map((f) => fileDiff(root, base, head, f)).join("\n\n")}
+`;
+}
+
 // src/cli/collect.ts
 function parseChanges(nameStatusZ, numstatZ) {
   const stats = /* @__PURE__ */ new Map();
@@ -16334,6 +16375,11 @@ function collect(cwd, opts) {
     previous: readJsonIfExists(mapPath(root))
   };
   writeJson(inputPath(root), input);
+  const changedTests = unclassified.filter((f) => f.category === "test");
+  writeText(
+    diffPath(root),
+    buildDiffText(root, mergeBase, head, [...files, ...changedTests])
+  );
   writeJson(statePath(root), { head, attempts: 0, errors: [] });
   excludeOutput(root);
   return input;

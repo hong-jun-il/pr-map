@@ -28,11 +28,12 @@ PR 번호는 실행한 저장소의 `origin`에 연결된 GitHub 저장소 기�
 1. **수집**
    `node <스크립트> collect [--pr <번호>]`
    → `.pr-map/input.json` 생성: PR 정보, merge-base·head, 변경 파일·상태, 미분류 목록, 관계 후보, (있으면) 이전 `pr-map.json`.
+   → `.pr-map/diff.txt` 생성: 변경 파일과 바뀐 테스트의 변경 내용. 줄마다 head·base 줄 번호가 붙어 있다.
    PR 없이 브랜치만 비교하려면 `--base <ref>`를 쓴다.
    실패하면 오류 메시지를 사용자에게 그대로 보여주고 중단한다.
    `files`가 비어 있으면(예: 테스트만 바꾼 PR) 분석을 멈추고 사용자에게 알린다. 테스트도 보려면 `.pr-map.yml`에 `includeTests: true`를 넣으면 된다고 안내한다.
 
-2. **분석** — `.pr-map/input.json`을 읽고 저장소를 직접 탐색한다(파일 읽기, grep).
+2. **분석** — `.pr-map/input.json`과 `.pr-map/diff.txt`를 먼저 읽는다. `git diff`로 같은 내용을 다시 읽지 않는다. 호출하는 함수나 변경 주변처럼 `diff.txt`에 없는 코드가 필요할 때만 저장소를 직접 탐색한다(파일 읽기, grep). 근거 줄 번호는 `diff.txt`의 번호를 그대로 쓴다.
    - 대상: 변경 파일(`files`) + 관계 후보 중 동작 이해에 필요한 파일(`reference`).
    - 범위: 변경된 함수와, 그 함수를 직접 호출하는 함수. 파일 전체를 설명하지 않는다.
    - **줄 번호는 분석 커밋 기준이다.** `checkout.matchesHead`가 false이거나 `checkout.dirty`가 true이면 작업 트리 파일을 믿지 말고 `git show <head>:<경로>`, `git show <base>:<경로>`로 읽는다.
