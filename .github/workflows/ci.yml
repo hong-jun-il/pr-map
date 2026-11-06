@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-output:
+    name: 빌드 결과 검사
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # 스킬과 액션은 커밋된 skill/pr-map을 그대로 실행한다.
+      # src/나 spec/만 고치고 빌드하지 않으면 실제 동작이 바뀌지 않는다.
+      - name: 커밋된 결과와 비교
+        run: |
+          if [ -n "$(git status --porcelain -- skill/pr-map)" ]; then
+            git status --short -- skill/pr-map
+            echo "::error::skill/pr-map이 소스와 다릅니다. npm run build를 실행하고 결과를 커밋하세요."
+            exit 1
+          fi
