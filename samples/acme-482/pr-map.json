@@ -1,158 +1,880 @@
 {
   "version": 2,
-  "pr": { "repo": "acme/api", "number": 482, "base": "1a2b3c4", "head": "c3f9a1e", "summary": "세션 갱신을 서버 간 잠금으로 직렬화하고, 실패하면 세션과 새 토큰을 정리합니다." },
+  "pr": {
+    "repo": "acme/api",
+    "number": 482,
+    "base": "1a2b3c4",
+    "head": "c3f9a1e",
+    "summary": "세션 갱신을 서버 간 잠금으로 직렬화하고, 실패하면 세션과 새 토큰을 정리합니다."
+  },
   "readingOrder": [
-    { "file": "session-refresh", "why": "갱신 흐름의 중심 · 분기 대부분이 여기" },
+    {
+      "file": "session-refresh",
+      "why": "갱신 흐름의 중심 · 분기 대부분이 여기"
+    },
     { "file": "refresh-lock", "why": "새 잠금 · 경합 처리" },
     { "file": "session-store", "why": "버전 비교 저장 · 조건부 삭제" }
   ],
   "files": [
     {
-      "id": "session-refresh", "path": "src/auth/session-refresh.ts", "status": "modified", "layer": "core", "role": "만료 직전 세션을 서버 간 한 번만 갱신",
+      "id": "session-refresh",
+      "path": "src/auth/session-refresh.ts",
+      "status": "modified",
+      "layer": "core",
+      "role": "만료 직전 세션을 서버 간 한 번만 갱신",
       "tree": [
-        { "id": "check-session", "text": "최신 세션 확인", "change": "unchanged",
-          "evidence": [{ "side": "head", "path": "src/auth/session-refresh.ts", "start": 8, "end": 9, "role": "세션 조회와 만료 판단" }],
+        {
+          "id": "check-session",
+          "text": "최신 세션 확인",
+          "change": "unchanged",
+          "evidence": [
+            {
+              "side": "head",
+              "path": "src/auth/session-refresh.ts",
+              "start": 8,
+              "end": 9,
+              "role": "세션 조회와 만료 판단"
+            }
+          ],
           "children": [
-            { "id": "wait-other", "text": "다른 서버가 갱신 중 → 기다림", "change": "added",
-              "tests": [{ "path": "src/auth/__tests__/session-refresh.test.ts", "start": 9, "end": 12, "role": "동시 요청 → 갱신 한 번" }],
+            {
+              "id": "wait-other",
+              "text": "다른 서버가 갱신 중 → 기다림",
+              "change": "added",
+              "tests": [
+                {
+                  "path": "src/auth/__tests__/session-refresh.test.ts",
+                  "start": 9,
+                  "end": 12,
+                  "role": "동시 요청 → 갱신 한 번"
+                }
+              ],
               "evidence": [
-                { "side": "head", "path": "src/auth/session-refresh.ts", "start": 13, "end": 14, "role": "잠금 실패 시 대기" },
-                { "side": "head", "path": "src/auth/refresh-lock.ts", "start": 14, "end": 18, "role": "대기 구현" }],
+                {
+                  "side": "head",
+                  "path": "src/auth/session-refresh.ts",
+                  "start": 13,
+                  "end": 14,
+                  "role": "잠금 실패 시 대기"
+                },
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 14,
+                  "end": 18,
+                  "role": "대기 구현"
+                }
+              ],
               "children": [
-                { "id": "wait-timeout", "text": "너무 오래 멈춤 → 세션 삭제 시도, 재인증 필요", "change": "added",
+                {
+                  "id": "wait-timeout",
+                  "text": "너무 오래 멈춤 → 세션 삭제 시도, 재인증 필요",
+                  "change": "added",
                   "evidence": [
-                    { "side": "head", "path": "src/auth/session-refresh.ts", "start": 15, "end": 18, "role": "대기 시간 초과 처리" },
-                    { "side": "head", "path": "src/store/session-store.ts", "start": 12, "end": 18, "role": "조건부 삭제" }] }] },
-            { "id": "already-refreshed", "text": "이미 갱신됨 → 결과 사용", "change": "added",
+                    {
+                      "side": "head",
+                      "path": "src/auth/session-refresh.ts",
+                      "start": 15,
+                      "end": 18,
+                      "role": "대기 시간 초과 처리"
+                    },
+                    {
+                      "side": "head",
+                      "path": "src/store/session-store.ts",
+                      "start": 12,
+                      "end": 18,
+                      "role": "조건부 삭제"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "already-refreshed",
+              "text": "이미 갱신됨 → 결과 사용",
+              "change": "added",
               "evidence": [
-                { "side": "head", "path": "src/auth/session-refresh.ts", "start": 12, "end": 12, "role": "갱신 결과 재사용" },
-                { "side": "head", "path": "src/auth/refresh-lock.ts", "start": 9, "end": 10, "role": "갱신 결과 조회" }] },
-            { "id": "got-lock", "text": "갱신 권한 확보", "change": "added",
+                {
+                  "side": "head",
+                  "path": "src/auth/session-refresh.ts",
+                  "start": 12,
+                  "end": 12,
+                  "role": "갱신 결과 재사용"
+                },
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 9,
+                  "end": 10,
+                  "role": "갱신 결과 조회"
+                }
+              ]
+            },
+            {
+              "id": "got-lock",
+              "text": "갱신 권한 확보",
+              "change": "added",
               "evidence": [
-                { "side": "head", "path": "src/auth/session-refresh.ts", "start": 11, "end": 11, "role": "권한 요청" },
-                { "side": "head", "path": "src/auth/refresh-lock.ts", "start": 5, "end": 7, "role": "실제 잠금 처리" }],
+                {
+                  "side": "head",
+                  "path": "src/auth/session-refresh.ts",
+                  "start": 11,
+                  "end": 11,
+                  "role": "권한 요청"
+                },
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 5,
+                  "end": 7,
+                  "role": "실제 잠금 처리"
+                }
+              ],
               "children": [
-                { "id": "refresh-failed", "text": "갱신 실패 → 세션 삭제 시도", "change": "added",
-                  "tests": [{ "path": "src/auth/__tests__/session-refresh.test.ts", "start": 14, "end": 16, "role": "갱신 거부 → 세션 삭제" }],
+                {
+                  "id": "refresh-failed",
+                  "text": "갱신 실패 → 세션 삭제 시도",
+                  "change": "added",
+                  "tests": [
+                    {
+                      "path": "src/auth/__tests__/session-refresh.test.ts",
+                      "start": 14,
+                      "end": 16,
+                      "role": "갱신 거부 → 세션 삭제"
+                    }
+                  ],
                   "evidence": [
-                    { "side": "head", "path": "src/auth/session-refresh.ts", "start": 23, "end": 28, "role": "실패 감지" },
-                    { "side": "head", "path": "src/auth/token-client.ts", "start": 6, "end": 6, "role": "401 응답 처리" },
-                    { "side": "head", "path": "src/store/session-store.ts", "start": 12, "end": 18, "role": "조건부 삭제" }] },
-                { "id": "refresh-ok", "text": "갱신 성공", "change": "added",
-                  "evidence": [{ "side": "head", "path": "src/auth/session-refresh.ts", "start": 30, "end": 30, "role": "새 세션 구성" }],
+                    {
+                      "side": "head",
+                      "path": "src/auth/session-refresh.ts",
+                      "start": 23,
+                      "end": 28,
+                      "role": "실패 감지"
+                    },
+                    {
+                      "side": "head",
+                      "path": "src/auth/token-client.ts",
+                      "start": 6,
+                      "end": 6,
+                      "role": "401 응답 처리"
+                    },
+                    {
+                      "side": "head",
+                      "path": "src/store/session-store.ts",
+                      "start": 12,
+                      "end": 18,
+                      "role": "조건부 삭제"
+                    }
+                  ]
+                },
+                {
+                  "id": "refresh-ok",
+                  "text": "갱신 성공",
+                  "change": "added",
+                  "evidence": [
+                    {
+                      "side": "head",
+                      "path": "src/auth/session-refresh.ts",
+                      "start": 30,
+                      "end": 30,
+                      "role": "새 세션 구성"
+                    }
+                  ],
                   "children": [
-                    { "id": "save-ok", "text": "저장 성공 → 새 세션 반환", "change": "added",
+                    {
+                      "id": "save-ok",
+                      "text": "저장 성공 → 새 세션 반환",
+                      "change": "added",
                       "evidence": [
-                        { "side": "head", "path": "src/auth/session-refresh.ts", "start": 31, "end": 31, "role": "버전 비교 저장" },
-                        { "side": "head", "path": "src/auth/session-refresh.ts", "start": 36, "end": 37, "role": "잠금 해제 후 반환" },
-                        { "side": "head", "path": "src/store/session-store.ts", "start": 7, "end": 10, "role": "실제 저장소 처리" }] },
-                    { "id": "save-failed", "text": "저장 실패·중간 로그아웃 → 새 토큰 폐기 시도", "change": "added",
+                        {
+                          "side": "head",
+                          "path": "src/auth/session-refresh.ts",
+                          "start": 31,
+                          "end": 31,
+                          "role": "버전 비교 저장"
+                        },
+                        {
+                          "side": "head",
+                          "path": "src/auth/session-refresh.ts",
+                          "start": 36,
+                          "end": 37,
+                          "role": "잠금 해제 후 반환"
+                        },
+                        {
+                          "side": "head",
+                          "path": "src/store/session-store.ts",
+                          "start": 7,
+                          "end": 10,
+                          "role": "실제 저장소 처리"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "save-failed",
+                      "text": "저장 실패·중간 로그아웃 → 새 토큰 폐기 시도",
+                      "change": "added",
                       "evidence": [
-                        { "side": "head", "path": "src/auth/session-refresh.ts", "start": 32, "end": 35, "role": "저장 실패 감지" },
-                        { "side": "head", "path": "src/auth/token-client.ts", "start": 10, "end": 12, "role": "토큰 폐기 요청" }] }] }] },
-            { "id": "direct-refresh", "text": "바로 갱신 → 버전 확인 없이 저장 후 다시 조회", "change": "deleted",
-              "evidence": [{ "side": "base", "path": "src/auth/session-refresh.ts", "start": 8, "end": 10, "role": "이전 갱신 방식" }] }] }]
-    },
-    {
-      "id": "refresh-lock", "path": "src/auth/refresh-lock.ts", "status": "added", "layer": "core", "role": "서버 간 갱신 잠금과 완료 대기",
-      "tree": [
-        { "id": "acquire", "text": "갱신 권한 확보 시도", "change": "added",
-          "evidence": [{ "side": "head", "path": "src/auth/refresh-lock.ts", "start": 5, "end": 6, "role": "잠금 설정" }],
-          "children": [
-            { "id": "acquired", "text": "잠금 획득 → 갱신 담당", "change": "added", "evidence": [{ "side": "head", "path": "src/auth/refresh-lock.ts", "start": 7, "end": 7, "role": "획득 결과" }] },
-            { "id": "already", "text": "이미 갱신됨 → 결과 전달", "change": "added", "evidence": [{ "side": "head", "path": "src/auth/refresh-lock.ts", "start": 9, "end": 10, "role": "갱신 결과 조회" }] },
-            { "id": "ttl", "text": "30초 뒤 잠금 자동 해제", "change": "added",
+                        {
+                          "side": "head",
+                          "path": "src/auth/session-refresh.ts",
+                          "start": 32,
+                          "end": 35,
+                          "role": "저장 실패 감지"
+                        },
+                        {
+                          "side": "head",
+                          "path": "src/auth/token-client.ts",
+                          "start": 10,
+                          "end": 12,
+                          "role": "토큰 폐기 요청"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "direct-refresh",
+              "text": "바로 갱신 → 버전 확인 없이 저장 후 다시 조회",
+              "change": "deleted",
               "evidence": [
-                { "side": "head", "path": "src/auth/refresh-lock.ts", "start": 3, "end": 3, "role": "만료 시간" },
-                { "side": "head", "path": "src/auth/refresh-lock.ts", "start": 6, "end": 6, "role": "만료 옵션 적용" }] }] },
-        { "id": "wait", "text": "갱신 완료 기다림", "change": "added",
-          "evidence": [{ "side": "head", "path": "src/auth/refresh-lock.ts", "start": 14, "end": 15, "role": "완료 신호 구독" }],
-          "children": [
-            { "id": "wait-limit", "text": "제한 시간 초과 → 시간 초과 반환", "change": "added", "evidence": [{ "side": "head", "path": "src/auth/refresh-lock.ts", "start": 16, "end": 16, "role": "시간 초과 판정" }] }] }]
+                {
+                  "side": "base",
+                  "path": "src/auth/session-refresh.ts",
+                  "start": 8,
+                  "end": 10,
+                  "role": "이전 갱신 방식"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
-      "id": "session-store", "path": "src/store/session-store.ts", "status": "modified", "layer": "store", "role": "세션 조회, 버전 비교 저장, 조건부 삭제",
+      "id": "refresh-lock",
+      "path": "src/auth/refresh-lock.ts",
+      "status": "added",
+      "layer": "core",
+      "role": "서버 간 갱신 잠금과 완료 대기",
       "tree": [
-        { "id": "find", "text": "세션 조회", "change": "unchanged",
-          "evidence": [{ "side": "head", "path": "src/store/session-store.ts", "start": 5, "end": 5, "role": "조회 함수" }],
-          "children": [
-            { "id": "find-none", "text": "없음 → null 반환", "change": "unchanged", "evidence": [{ "side": "head", "path": "src/store/session-store.ts", "start": 5, "end": 5, "role": "조회 결과" }] },
-            { "id": "find-some", "text": "있음 → 세션 반환", "change": "unchanged", "evidence": [{ "side": "head", "path": "src/store/session-store.ts", "start": 5, "end": 5, "role": "조회 결과" }] }] },
-        { "id": "save", "text": "세션 저장", "change": "modified",
+        {
+          "id": "acquire",
+          "text": "갱신 권한 확보 시도",
+          "change": "added",
           "evidence": [
-            { "side": "head", "path": "src/store/session-store.ts", "start": 7, "end": 10, "role": "버전 비교 후 저장" },
-            { "side": "base", "path": "src/store/session-store.ts", "start": 6, "end": 6, "role": "이전: 무조건 덮어쓰기" }],
+            {
+              "side": "head",
+              "path": "src/auth/refresh-lock.ts",
+              "start": 5,
+              "end": 6,
+              "role": "잠금 설정"
+            }
+          ],
           "children": [
-            { "id": "save-match", "text": "버전 일치 → 저장", "change": "added", "evidence": [{ "side": "head", "path": "src/store/session-store.ts", "start": 8, "end": 8, "role": "버전 조건" }] },
-            { "id": "save-mismatch", "text": "버전 불일치 → 저장하지 않음", "change": "added", "evidence": [{ "side": "head", "path": "src/store/session-store.ts", "start": 9, "end": 9, "role": "결과 판정" }] },
-            { "id": "save-always", "text": "항상 덮어쓰기", "change": "deleted", "evidence": [{ "side": "base", "path": "src/store/session-store.ts", "start": 6, "end": 6, "role": "이전 저장" }] }] },
-        { "id": "delete", "text": "세션 삭제 시도", "change": "added",
-          "evidence": [{ "side": "head", "path": "src/store/session-store.ts", "start": 12, "end": 14, "role": "버전 조건 삭제" }],
-          "children": [
-            { "id": "delete-failed", "text": "삭제 실패 → 경고 로그만 남김", "change": "added", "evidence": [{ "side": "head", "path": "src/store/session-store.ts", "start": 15, "end": 17, "role": "오류 무시" }] }] },
-        { "id": "cleanup", "text": "오래된 세션 정리 → 주기 작업에서 실행", "change": "unchanged", "unverified": true, "evidence": [] }]
-    },
-    {
-      "id": "token-client", "path": "src/auth/token-client.ts", "status": "reference", "layer": "ext", "role": "OAuth 토큰 갱신·폐기 요청",
-      "tree": [
-        { "id": "refresh-request", "text": "토큰 갱신 요청", "change": "affected",
-          "affectedBy": { "text": "이제 잠금을 얻은 서버만 갱신을 요청함", "evidence": [{ "side": "head", "path": "src/auth/session-refresh.ts", "start": 11, "end": 14, "role": "잠금 확보 후에만 갱신" }] },
-          "evidence": [{ "side": "head", "path": "src/auth/token-client.ts", "start": 4, "end": 5, "role": "갱신 요청" }],
-          "children": [
-            { "id": "rejected", "text": "401 응답 → 갱신 거부 오류", "change": "unchanged", "evidence": [{ "side": "head", "path": "src/auth/token-client.ts", "start": 6, "end": 6, "role": "거부 처리" }] },
-            { "id": "granted", "text": "성공 → 새 토큰 반환", "change": "unchanged", "evidence": [{ "side": "head", "path": "src/auth/token-client.ts", "start": 7, "end": 7, "role": "토큰 추출" }] }] },
-        { "id": "revoke", "text": "토큰 폐기 요청 → 실패해도 무시", "change": "affected",
-          "affectedBy": { "text": "이제 저장에 실패하면 새 토큰 폐기를 요청함", "evidence": [{ "side": "head", "path": "src/auth/session-refresh.ts", "start": 32, "end": 35, "role": "저장 실패 시 폐기" }] },
-          "evidence": [{ "side": "head", "path": "src/auth/token-client.ts", "start": 10, "end": 11, "role": "폐기 요청" }] }]
-    },
-    {
-      "id": "legacy-refresh", "path": "src/auth/legacy-refresh.ts", "status": "deleted", "replacedBy": ["session-refresh"], "layer": "core", "role": "잠금 없는 이전 갱신",
-      "tree": [
-        { "id": "legacy", "text": "세션 갱신 (잠금 없음)", "change": "deleted",
-          "evidence": [{ "side": "base", "path": "src/auth/legacy-refresh.ts", "start": 4, "end": 9, "role": "이전 갱신 전체" }],
-          "children": [
-            { "id": "legacy-overwrite", "text": "토큰 갱신 → 버전 확인 없이 덮어쓰기", "change": "deleted", "evidence": [{ "side": "base", "path": "src/auth/legacy-refresh.ts", "start": 6, "end": 7, "role": "무조건 저장" }] },
-            { "id": "legacy-error", "text": "갱신 실패 → 처리 없이 오류 전파", "change": "deleted", "evidence": [{ "side": "base", "path": "src/auth/legacy-refresh.ts", "start": 6, "end": 6, "role": "예외 미처리" }] }] },
-        { "id": "legacy-schedule", "text": "1분 뒤 재갱신 예약 → 오류 무시", "change": "deleted", "evidence": [{ "side": "base", "path": "src/auth/legacy-refresh.ts", "start": 11, "end": 13, "role": "예약 갱신" }] }]
-    },
-    {
-      "id": "csv-export", "path": "src/reports/csv-export.ts", "status": "deleted", "replacedBy": [], "layer": "entry", "role": "CSV 보고서 내려받기",
-      "tree": [
-        { "id": "csv", "text": "CSV 보고서 내려받기", "change": "deleted",
-          "evidence": [{ "side": "base", "path": "src/reports/csv-export.ts", "start": 4, "end": 9, "role": "이전 처리 전체" }],
-          "children": [
-            { "id": "csv-404", "text": "보고서 없음 → 404 응답", "change": "deleted", "evidence": [{ "side": "base", "path": "src/reports/csv-export.ts", "start": 6, "end": 6, "role": "없음 처리" }] },
-            { "id": "csv-send", "text": "보고서 있음 → CSV로 변환해 전송", "change": "deleted", "evidence": [{ "side": "base", "path": "src/reports/csv-export.ts", "start": 7, "end": 8, "role": "변환과 전송" }] }] },
-        { "id": "csv-caller", "text": "이전 호출 routes.ts → 이번 PR에서 제거됨", "change": "deleted",
+            {
+              "id": "acquired",
+              "text": "잠금 획득 → 갱신 담당",
+              "change": "added",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 7,
+                  "end": 7,
+                  "role": "획득 결과"
+                }
+              ]
+            },
+            {
+              "id": "already",
+              "text": "이미 갱신됨 → 결과 전달",
+              "change": "added",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 9,
+                  "end": 10,
+                  "role": "갱신 결과 조회"
+                }
+              ]
+            },
+            {
+              "id": "ttl",
+              "text": "30초 뒤 잠금 자동 해제",
+              "change": "added",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 3,
+                  "end": 3,
+                  "role": "만료 시간"
+                },
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 6,
+                  "end": 6,
+                  "role": "만료 옵션 적용"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wait",
+          "text": "갱신 완료 기다림",
+          "change": "added",
           "evidence": [
-            { "side": "base", "path": "src/routes.ts", "start": 7, "end": 7, "role": "라우트 제거" },
-            { "side": "base", "path": "src/routes.ts", "start": 2, "end": 2, "role": "import 제거" }] }]
+            {
+              "side": "head",
+              "path": "src/auth/refresh-lock.ts",
+              "start": 14,
+              "end": 15,
+              "role": "완료 신호 구독"
+            }
+          ],
+          "children": [
+            {
+              "id": "wait-limit",
+              "text": "제한 시간 초과 → 시간 초과 반환",
+              "change": "added",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 16,
+                  "end": 16,
+                  "role": "시간 초과 판정"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
-      "id": "routes", "path": "src/routes.ts", "status": "modified", "layer": "entry", "role": "HTTP 라우트 등록",
+      "id": "session-store",
+      "path": "src/store/session-store.ts",
+      "status": "modified",
+      "layer": "store",
+      "role": "세션 조회, 버전 비교 저장, 조건부 삭제",
       "tree": [
-        { "id": "report-routes", "text": "보고서 라우트 등록", "change": "unchanged",
-          "evidence": [{ "side": "head", "path": "src/routes.ts", "start": 4, "end": 5, "role": "라우터와 조회 라우트" }],
-          "children": [
-            { "id": "csv-route", "text": "CSV 내려받기 라우트 → 제거됨", "change": "deleted", "evidence": [{ "side": "base", "path": "src/routes.ts", "start": 7, "end": 7, "role": "라우트 제거" }] }] }]
-    },
-    {
-      "id": "token-cache", "path": "src/auth/token-cache.ts", "oldPath": "src/auth/token-store.ts", "status": "renamed", "layer": "store", "role": "메모리 토큰 캐시",
-      "tree": [
-        { "id": "read", "text": "캐시된 토큰 읽기", "change": "unchanged",
-          "evidence": [{ "side": "head", "path": "src/auth/token-cache.ts", "start": 4, "end": 7, "role": "읽기 함수" }],
-          "children": [
-            { "id": "miss", "text": "없음 또는 만료 → null", "change": "unchanged", "evidence": [{ "side": "head", "path": "src/auth/token-cache.ts", "start": 5, "end": 5, "role": "만료 판정" }] },
-            { "id": "hit", "text": "유효 → 토큰 반환", "change": "unchanged", "evidence": [{ "side": "head", "path": "src/auth/token-cache.ts", "start": 6, "end": 6, "role": "반환" }] }] },
-        { "id": "rename-fn", "text": "함수 이름 getToken → readToken", "change": "modified",
+        {
+          "id": "find",
+          "text": "세션 조회",
+          "change": "unchanged",
           "evidence": [
-            { "side": "head", "path": "src/auth/token-cache.ts", "start": 3, "end": 3, "role": "새 이름" },
-            { "side": "base", "path": "src/auth/token-store.ts", "start": 3, "end": 3, "role": "이전 이름" }] }]
+            {
+              "side": "head",
+              "path": "src/store/session-store.ts",
+              "start": 5,
+              "end": 5,
+              "role": "조회 함수"
+            }
+          ],
+          "children": [
+            {
+              "id": "find-none",
+              "text": "없음 → null 반환",
+              "change": "unchanged",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/store/session-store.ts",
+                  "start": 5,
+                  "end": 5,
+                  "role": "조회 결과"
+                }
+              ]
+            },
+            {
+              "id": "find-some",
+              "text": "있음 → 세션 반환",
+              "change": "unchanged",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/store/session-store.ts",
+                  "start": 5,
+                  "end": 5,
+                  "role": "조회 결과"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "save",
+          "text": "세션 저장",
+          "change": "modified",
+          "evidence": [
+            {
+              "side": "head",
+              "path": "src/store/session-store.ts",
+              "start": 7,
+              "end": 10,
+              "role": "버전 비교 후 저장"
+            },
+            {
+              "side": "base",
+              "path": "src/store/session-store.ts",
+              "start": 6,
+              "end": 6,
+              "role": "이전: 무조건 덮어쓰기"
+            }
+          ],
+          "children": [
+            {
+              "id": "save-match",
+              "text": "버전 일치 → 저장",
+              "change": "added",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/store/session-store.ts",
+                  "start": 8,
+                  "end": 8,
+                  "role": "버전 조건"
+                }
+              ]
+            },
+            {
+              "id": "save-mismatch",
+              "text": "버전 불일치 → 저장하지 않음",
+              "change": "added",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/store/session-store.ts",
+                  "start": 9,
+                  "end": 9,
+                  "role": "결과 판정"
+                }
+              ]
+            },
+            {
+              "id": "save-always",
+              "text": "항상 덮어쓰기",
+              "change": "deleted",
+              "evidence": [
+                {
+                  "side": "base",
+                  "path": "src/store/session-store.ts",
+                  "start": 6,
+                  "end": 6,
+                  "role": "이전 저장"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "delete",
+          "text": "세션 삭제 시도",
+          "change": "added",
+          "evidence": [
+            {
+              "side": "head",
+              "path": "src/store/session-store.ts",
+              "start": 12,
+              "end": 14,
+              "role": "버전 조건 삭제"
+            }
+          ],
+          "children": [
+            {
+              "id": "delete-failed",
+              "text": "삭제 실패 → 경고 로그만 남김",
+              "change": "added",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/store/session-store.ts",
+                  "start": 15,
+                  "end": 17,
+                  "role": "오류 무시"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cleanup",
+          "text": "오래된 세션 정리 → 주기 작업에서 실행",
+          "change": "unchanged",
+          "unverified": true,
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "id": "token-client",
+      "path": "src/auth/token-client.ts",
+      "status": "reference",
+      "layer": "ext",
+      "role": "OAuth 토큰 갱신·폐기 요청",
+      "tree": [
+        {
+          "id": "refresh-request",
+          "text": "토큰 갱신 요청",
+          "change": "affected",
+          "affectedBy": {
+            "text": "이제 잠금을 얻은 서버만 갱신을 요청함",
+            "evidence": [
+              {
+                "side": "head",
+                "path": "src/auth/session-refresh.ts",
+                "start": 11,
+                "end": 14,
+                "role": "잠금 확보 후에만 갱신"
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "side": "head",
+              "path": "src/auth/token-client.ts",
+              "start": 4,
+              "end": 5,
+              "role": "갱신 요청"
+            }
+          ],
+          "children": [
+            {
+              "id": "rejected",
+              "text": "401 응답 → 갱신 거부 오류",
+              "change": "unchanged",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/auth/token-client.ts",
+                  "start": 6,
+                  "end": 6,
+                  "role": "거부 처리"
+                }
+              ]
+            },
+            {
+              "id": "granted",
+              "text": "성공 → 새 토큰 반환",
+              "change": "unchanged",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/auth/token-client.ts",
+                  "start": 7,
+                  "end": 7,
+                  "role": "토큰 추출"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "revoke",
+          "text": "토큰 폐기 요청 → 실패해도 무시",
+          "change": "affected",
+          "affectedBy": {
+            "text": "이제 저장에 실패하면 새 토큰 폐기를 요청함",
+            "evidence": [
+              {
+                "side": "head",
+                "path": "src/auth/session-refresh.ts",
+                "start": 32,
+                "end": 35,
+                "role": "저장 실패 시 폐기"
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "side": "head",
+              "path": "src/auth/token-client.ts",
+              "start": 10,
+              "end": 11,
+              "role": "폐기 요청"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "legacy-refresh",
+      "path": "src/auth/legacy-refresh.ts",
+      "status": "deleted",
+      "replacedBy": ["session-refresh"],
+      "layer": "core",
+      "role": "잠금 없는 이전 갱신",
+      "tree": [
+        {
+          "id": "legacy",
+          "text": "세션 갱신 (잠금 없음)",
+          "change": "deleted",
+          "evidence": [
+            {
+              "side": "base",
+              "path": "src/auth/legacy-refresh.ts",
+              "start": 4,
+              "end": 9,
+              "role": "이전 갱신 전체"
+            }
+          ],
+          "children": [
+            {
+              "id": "legacy-overwrite",
+              "text": "토큰 갱신 → 버전 확인 없이 덮어쓰기",
+              "change": "deleted",
+              "evidence": [
+                {
+                  "side": "base",
+                  "path": "src/auth/legacy-refresh.ts",
+                  "start": 6,
+                  "end": 7,
+                  "role": "무조건 저장"
+                }
+              ]
+            },
+            {
+              "id": "legacy-error",
+              "text": "갱신 실패 → 처리 없이 오류 전파",
+              "change": "deleted",
+              "evidence": [
+                {
+                  "side": "base",
+                  "path": "src/auth/legacy-refresh.ts",
+                  "start": 6,
+                  "end": 6,
+                  "role": "예외 미처리"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "legacy-schedule",
+          "text": "1분 뒤 재갱신 예약 → 오류 무시",
+          "change": "deleted",
+          "evidence": [
+            {
+              "side": "base",
+              "path": "src/auth/legacy-refresh.ts",
+              "start": 11,
+              "end": 13,
+              "role": "예약 갱신"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "csv-export",
+      "path": "src/reports/csv-export.ts",
+      "status": "deleted",
+      "replacedBy": [],
+      "layer": "entry",
+      "role": "CSV 보고서 내려받기",
+      "tree": [
+        {
+          "id": "csv",
+          "text": "CSV 보고서 내려받기",
+          "change": "deleted",
+          "evidence": [
+            {
+              "side": "base",
+              "path": "src/reports/csv-export.ts",
+              "start": 4,
+              "end": 9,
+              "role": "이전 처리 전체"
+            }
+          ],
+          "children": [
+            {
+              "id": "csv-404",
+              "text": "보고서 없음 → 404 응답",
+              "change": "deleted",
+              "evidence": [
+                {
+                  "side": "base",
+                  "path": "src/reports/csv-export.ts",
+                  "start": 6,
+                  "end": 6,
+                  "role": "없음 처리"
+                }
+              ]
+            },
+            {
+              "id": "csv-send",
+              "text": "보고서 있음 → CSV로 변환해 전송",
+              "change": "deleted",
+              "evidence": [
+                {
+                  "side": "base",
+                  "path": "src/reports/csv-export.ts",
+                  "start": 7,
+                  "end": 8,
+                  "role": "변환과 전송"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "csv-caller",
+          "text": "이전 호출 routes.ts → 이번 PR에서 제거됨",
+          "change": "deleted",
+          "evidence": [
+            {
+              "side": "base",
+              "path": "src/routes.ts",
+              "start": 7,
+              "end": 7,
+              "role": "라우트 제거"
+            },
+            {
+              "side": "base",
+              "path": "src/routes.ts",
+              "start": 2,
+              "end": 2,
+              "role": "import 제거"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "routes",
+      "path": "src/routes.ts",
+      "status": "modified",
+      "layer": "entry",
+      "role": "HTTP 라우트 등록",
+      "tree": [
+        {
+          "id": "report-routes",
+          "text": "보고서 라우트 등록",
+          "change": "unchanged",
+          "evidence": [
+            {
+              "side": "head",
+              "path": "src/routes.ts",
+              "start": 4,
+              "end": 5,
+              "role": "라우터와 조회 라우트"
+            }
+          ],
+          "children": [
+            {
+              "id": "csv-route",
+              "text": "CSV 내려받기 라우트 → 제거됨",
+              "change": "deleted",
+              "evidence": [
+                {
+                  "side": "base",
+                  "path": "src/routes.ts",
+                  "start": 7,
+                  "end": 7,
+                  "role": "라우트 제거"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "token-cache",
+      "path": "src/auth/token-cache.ts",
+      "oldPath": "src/auth/token-store.ts",
+      "status": "renamed",
+      "layer": "store",
+      "role": "메모리 토큰 캐시",
+      "tree": [
+        {
+          "id": "read",
+          "text": "캐시된 토큰 읽기",
+          "change": "unchanged",
+          "evidence": [
+            {
+              "side": "head",
+              "path": "src/auth/token-cache.ts",
+              "start": 4,
+              "end": 7,
+              "role": "읽기 함수"
+            }
+          ],
+          "children": [
+            {
+              "id": "miss",
+              "text": "없음 또는 만료 → null",
+              "change": "unchanged",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/auth/token-cache.ts",
+                  "start": 5,
+                  "end": 5,
+                  "role": "만료 판정"
+                }
+              ]
+            },
+            {
+              "id": "hit",
+              "text": "유효 → 토큰 반환",
+              "change": "unchanged",
+              "evidence": [
+                {
+                  "side": "head",
+                  "path": "src/auth/token-cache.ts",
+                  "start": 6,
+                  "end": 6,
+                  "role": "반환"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rename-fn",
+          "text": "함수 이름 getToken → readToken",
+          "change": "modified",
+          "evidence": [
+            {
+              "side": "head",
+              "path": "src/auth/token-cache.ts",
+              "start": 3,
+              "end": 3,
+              "role": "새 이름"
+            },
+            {
+              "side": "base",
+              "path": "src/auth/token-store.ts",
+              "start": 3,
+              "end": 3,
+              "role": "이전 이름"
+            }
+          ]
+        }
+      ]
     }
   ],
   "edges": [
-    { "from": "session-refresh", "to": "refresh-lock", "label": "갱신 권한 · 대기" },
-    { "from": "session-refresh", "to": "session-store", "label": "조회 · 버전 저장 · 조건부 삭제" },
-    { "from": "session-refresh", "to": "token-client", "label": "갱신 · 폐기 요청" }
+    {
+      "from": "session-refresh",
+      "to": "refresh-lock",
+      "label": "갱신 권한 · 대기"
+    },
+    {
+      "from": "session-refresh",
+      "to": "session-store",
+      "label": "조회 · 버전 저장 · 조건부 삭제"
+    },
+    {
+      "from": "session-refresh",
+      "to": "token-client",
+      "label": "갱신 · 폐기 요청"
+    }
   ]
 }

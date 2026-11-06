@@ -8,7 +8,10 @@
     "summary": "세션 갱신을 서버 간 잠금으로 직렬화하고, 실패하면 세션과 새 토큰을 정리합니다."
   },
   "readingOrder": [
-    { "file": "session-refresh", "why": "갱신 흐름의 중심 · 분기 대부분이 여기" },
+    {
+      "file": "session-refresh",
+      "why": "갱신 흐름의 중심 · 분기 대부분이 여기"
+    },
     { "file": "refresh-lock", "why": "새 잠금 · 경합 처리" },
     { "file": "session-store", "why": "버전 비교 저장 · 조건부 삭제" }
   ],
@@ -25,7 +28,13 @@
           "text": "최신 세션 확인",
           "change": "unchanged",
           "evidence": [
-            { "side": "head", "path": "src/auth/session-refresh.ts", "start": 8, "end": 9, "role": "세션 조회와 만료 판단" }
+            {
+              "side": "head",
+              "path": "src/auth/session-refresh.ts",
+              "start": 8,
+              "end": 9,
+              "role": "세션 조회와 만료 판단"
+            }
           ],
           "children": [
             {
@@ -33,11 +42,28 @@
               "text": "다른 서버가 갱신 중 → 기다림",
               "change": "added",
               "tests": [
-                { "path": "src/auth/__tests__/session-refresh.test.ts", "start": 9, "end": 12, "role": "동시 요청 → 갱신 한 번" }
+                {
+                  "path": "src/auth/__tests__/session-refresh.test.ts",
+                  "start": 9,
+                  "end": 12,
+                  "role": "동시 요청 → 갱신 한 번"
+                }
               ],
               "evidence": [
-                { "side": "head", "path": "src/auth/session-refresh.ts", "start": 13, "end": 14, "role": "잠금 실패 시 대기" },
-                { "side": "head", "path": "src/auth/refresh-lock.ts", "start": 14, "end": 18, "role": "대기 구현" }
+                {
+                  "side": "head",
+                  "path": "src/auth/session-refresh.ts",
+                  "start": 13,
+                  "end": 14,
+                  "role": "잠금 실패 시 대기"
+                },
+                {
+                  "side": "head",
+                  "path": "src/auth/refresh-lock.ts",
+                  "start": 14,
+                  "end": 18,
+                  "role": "대기 구현"
+                }
               ],
               "children": [
                 {
@@ -45,8 +71,20 @@
                   "text": "너무 오래 멈춤 → 세션 삭제 시도, 재인증 필요",
                   "change": "added",
                   "evidence": [
-                    { "side": "head", "path": "src/auth/session-refresh.ts", "start": 15, "end": 18, "role": "대기 시간 초과 처리" },
-                    { "side": "head", "path": "src/store/session-store.ts", "start": 12, "end": 18, "role": "조건부 삭제" }
+                    {
+                      "side": "head",
+                      "path": "src/auth/session-refresh.ts",
+                      "start": 15,
+                      "end": 18,
+                      "role": "대기 시간 초과 처리"
+                    },
+                    {
+                      "side": "head",
+                      "path": "src/store/session-store.ts",
+                      "start": 12,
+                      "end": 18,
+                      "role": "조건부 삭제"
+                    }
                   ]
                 }
               ]
@@ -56,7 +94,13 @@
               "text": "바로 갱신 → 버전 확인 없이 저장 후 다시 조회",
               "change": "deleted",
               "evidence": [
-                { "side": "base", "path": "src/auth/session-refresh.ts", "start": 8, "end": 10, "role": "이전 갱신 방식" }
+                {
+                  "side": "base",
+                  "path": "src/auth/session-refresh.ts",
+                  "start": 8,
+                  "end": 10,
+                  "role": "이전 갱신 방식"
+                }
               ]
             }
           ]
@@ -75,7 +119,13 @@
           "text": "갱신 권한 확보 시도",
           "change": "added",
           "evidence": [
-            { "side": "head", "path": "src/auth/refresh-lock.ts", "start": 5, "end": 6, "role": "잠금 설정" }
+            {
+              "side": "head",
+              "path": "src/auth/refresh-lock.ts",
+              "start": 5,
+              "end": 6,
+              "role": "잠금 설정"
+            }
           ]
         }
       ]
@@ -92,7 +142,13 @@
           "text": "세션 조회",
           "change": "unchanged",
           "evidence": [
-            { "side": "head", "path": "src/store/session-store.ts", "start": 5, "end": 5, "role": "조회 함수" }
+            {
+              "side": "head",
+              "path": "src/store/session-store.ts",
+              "start": 5,
+              "end": 5,
+              "role": "조회 함수"
+            }
           ]
         },
         {
@@ -118,11 +174,23 @@
           "affectedBy": {
             "text": "이제 잠금을 얻은 서버만 갱신을 요청함",
             "evidence": [
-              { "side": "head", "path": "src/auth/session-refresh.ts", "start": 11, "end": 14, "role": "잠금 확보 후에만 갱신" }
+              {
+                "side": "head",
+                "path": "src/auth/session-refresh.ts",
+                "start": 11,
+                "end": 14,
+                "role": "잠금 확보 후에만 갱신"
+              }
             ]
           },
           "evidence": [
-            { "side": "head", "path": "src/auth/token-client.ts", "start": 4, "end": 5, "role": "갱신 요청" }
+            {
+              "side": "head",
+              "path": "src/auth/token-client.ts",
+              "start": 4,
+              "end": 5,
+              "role": "갱신 요청"
+            }
           ]
         }
       ]
@@ -156,8 +224,20 @@
     }
   ],
   "edges": [
-    { "from": "session-refresh", "to": "refresh-lock", "label": "갱신 권한 · 대기" },
-    { "from": "session-refresh", "to": "session-store", "label": "조회 · 버전 저장 · 조건부 삭제" },
-    { "from": "session-refresh", "to": "token-client", "label": "갱신 · 폐기 요청" }
+    {
+      "from": "session-refresh",
+      "to": "refresh-lock",
+      "label": "갱신 권한 · 대기"
+    },
+    {
+      "from": "session-refresh",
+      "to": "session-store",
+      "label": "조회 · 버전 저장 · 조건부 삭제"
+    },
+    {
+      "from": "session-refresh",
+      "to": "token-client",
+      "label": "갱신 · 폐기 요청"
+    }
   ]
 }

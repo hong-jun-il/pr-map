@@ -1,7 +1,14 @@
-import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import { execFileSync } from "node:child_process";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 // 시안의 예시 PR(acme/api #482)을 실제 git 저장소로 재현한다.
 // 형식: 줄 앞 '+'는 head에만, '-'는 base에만, ' '는 양쪽에 있는 줄.
@@ -172,23 +179,27 @@ const T = `
 `;
 
 function split(src: string): { base: string | null; head: string | null } {
-  const lines = src.replace(/^\n|\n$/g, '').split('\n');
-  const pick = (skip: string) => lines.filter((l) => l[0] !== skip).map((l) => l.slice(2)).join('\n') + '\n';
+  const lines = src.replace(/^\n|\n$/g, "").split("\n");
+  const pick = (skip: string) =>
+    lines
+      .filter((l) => l[0] !== skip)
+      .map((l) => l.slice(2))
+      .join("\n") + "\n";
   return {
-    base: lines.some((l) => l[0] !== '+') ? pick('+') : null,
-    head: lines.some((l) => l[0] !== '-') ? pick('-') : null,
+    base: lines.some((l) => l[0] !== "+") ? pick("+") : null,
+    head: lines.some((l) => l[0] !== "-") ? pick("-") : null,
   };
 }
 
 const FILES: Record<string, string> = {
-  'src/auth/session-refresh.ts': A,
-  'src/auth/refresh-lock.ts': B,
-  'src/store/session-store.ts': C,
-  'src/auth/token-client.ts': D,
-  'src/auth/legacy-refresh.ts': E,
-  'src/reports/csv-export.ts': F,
-  'src/routes.ts': R,
-  'src/auth/__tests__/session-refresh.test.ts': T,
+  "src/auth/session-refresh.ts": A,
+  "src/auth/refresh-lock.ts": B,
+  "src/store/session-store.ts": C,
+  "src/auth/token-client.ts": D,
+  "src/auth/legacy-refresh.ts": E,
+  "src/reports/csv-export.ts": F,
+  "src/routes.ts": R,
+  "src/auth/__tests__/session-refresh.test.ts": T,
 };
 
 const FAKE_GH = `#!/usr/bin/env node
@@ -241,76 +252,114 @@ export interface Fixture {
 }
 
 function commit(root: string, message: string): string {
-  const g = (...a: string[]) => execFileSync('git', a, { cwd: root, encoding: 'utf8' }).trim();
-  g('add', '-A');
-  g('-c', 'user.name=PR Map Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', message);
-  return g('rev-parse', 'HEAD');
+  const g = (...a: string[]) =>
+    execFileSync("git", a, { cwd: root, encoding: "utf8" }).trim();
+  g("add", "-A");
+  g(
+    "-c",
+    "user.name=PR Map Test",
+    "-c",
+    "user.email=test@example.com",
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "-q",
+    "-m",
+    message,
+  );
+  return g("rev-parse", "HEAD");
 }
 
 export function makeFixture(dir?: string): Fixture {
-  const tmp = dir ?? mkdtempSync(path.join(tmpdir(), 'pr-map-'));
-  const root = path.join(tmp, 'repo');
+  const tmp = dir ?? mkdtempSync(path.join(tmpdir(), "pr-map-"));
+  const root = path.join(tmp, "repo");
   mkdirSync(root, { recursive: true });
-  const g = (...a: string[]) => execFileSync('git', a, { cwd: root, encoding: 'utf8' }).trim();
+  const g = (...a: string[]) =>
+    execFileSync("git", a, { cwd: root, encoding: "utf8" }).trim();
   const write = (rel: string, text: string | Buffer) => {
     const file = path.join(root, rel);
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, text);
   };
-  g('init', '-q', '-b', 'main');
-  g('remote', 'add', 'origin', 'https://github.com/acme/api.git');
+  g("init", "-q", "-b", "main");
+  g("remote", "add", "origin", "https://github.com/acme/api.git");
 
-  const parts = Object.entries(FILES).map(([p, src]) => [p, split(src)] as const);
+  const parts = Object.entries(FILES).map(
+    ([p, src]) => [p, split(src)] as const,
+  );
   const gParts = split(G);
   for (const [p, s] of parts) if (s.base !== null) write(p, s.base);
-  write('src/auth/token-store.ts', gParts.base!);
-  write('src/auth/__tests__/old-unrelated.test.ts', "it('예전 테스트', () => {})\n");
-  write('pnpm-lock.yaml', 'lockfileVersion: 9\n');
-  write('docs/auth/session.md', '# 세션\n');
-  write('infra/redis.conf', 'maxmemory 1gb\n');
-  write('public/og-image.png', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]));
-  const base = commit(root, 'base');
+  write("src/auth/token-store.ts", gParts.base!);
+  write(
+    "src/auth/__tests__/old-unrelated.test.ts",
+    "it('예전 테스트', () => {})\n",
+  );
+  write("pnpm-lock.yaml", "lockfileVersion: 9\n");
+  write("docs/auth/session.md", "# 세션\n");
+  write("infra/redis.conf", "maxmemory 1gb\n");
+  write(
+    "public/og-image.png",
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]),
+  );
+  const base = commit(root, "base");
 
-  g('switch', '-q', '-c', 'feat/refresh-lock');
+  g("switch", "-q", "-c", "feat/refresh-lock");
   for (const [p, s] of parts) {
     if (s.head === null) rmSync(path.join(root, p));
     else write(p, s.head);
   }
-  renameSync(path.join(root, 'src/auth/token-store.ts'), path.join(root, 'src/auth/token-cache.ts'));
-  write('src/auth/token-cache.ts', gParts.head!);
-  write('pnpm-lock.yaml', 'lockfileVersion: 9\npackages: {}\n');
-  write('docs/auth/session.md', '# 세션\n\n잠금을 씁니다.\n');
-  write('infra/redis.conf', 'maxmemory 2gb\n');
-  write('public/og-image.png', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 9, 9, 9]));
-  const head = commit(root, '세션 갱신 경합 처리와 실패 시 정리');
+  renameSync(
+    path.join(root, "src/auth/token-store.ts"),
+    path.join(root, "src/auth/token-cache.ts"),
+  );
+  write("src/auth/token-cache.ts", gParts.head!);
+  write("pnpm-lock.yaml", "lockfileVersion: 9\npackages: {}\n");
+  write("docs/auth/session.md", "# 세션\n\n잠금을 씁니다.\n");
+  write("infra/redis.conf", "maxmemory 2gb\n");
+  write(
+    "public/og-image.png",
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 9, 9, 9]),
+  );
+  const head = commit(root, "세션 갱신 경합 처리와 실패 시 정리");
 
-  const bin = path.join(tmp, 'bin');
+  const bin = path.join(tmp, "bin");
   mkdirSync(bin, { recursive: true });
-  writeFileSync(path.join(bin, 'gh'), FAKE_GH);
-  chmodSync(path.join(bin, 'gh'), 0o755);
+  writeFileSync(path.join(bin, "gh"), FAKE_GH);
+  chmodSync(path.join(bin, "gh"), 0o755);
   // origin의 GitHub 이름은 유지하면서 fetch는 로컬 fixture만 사용한다.
-  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
-  writeFileSync(path.join(bin, 'git'), `#!/bin/sh
+  const realGit = execFileSync("which", ["git"], { encoding: "utf8" }).trim();
+  writeFileSync(
+    path.join(bin, "git"),
+    `#!/bin/sh
 if [ "$1" = fetch ] && [ "$2" = --quiet ] && [ "$3" = origin ]; then
   shift 3
   exec "$FAKE_GIT_BIN" fetch --quiet "$FAKE_GIT_ORIGIN" "$@"
 fi
 exec "$FAKE_GIT_BIN" "$@"
-`);
-  chmodSync(path.join(bin, 'git'), 0o755);
+`,
+  );
+  chmodSync(path.join(bin, "git"), 0o755);
   // 테스트가 실제 브라우저를 띄우지 않게 한다.
-  for (const name of ['open', 'xdg-open']) {
-    writeFileSync(path.join(bin, name), '#!/bin/sh\nexit 0\n');
+  for (const name of ["open", "xdg-open"]) {
+    writeFileSync(path.join(bin, name), "#!/bin/sh\nexit 0\n");
     chmodSync(path.join(bin, name), 0o755);
   }
-  const log = path.join(tmp, 'gh.log');
-  writeFileSync(log, '');
+  const log = path.join(tmp, "gh.log");
+  writeFileSync(log, "");
   return {
     root,
     base,
     head,
     log,
-    env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, FAKE_GIT_BIN: realGit, FAKE_GIT_ORIGIN: root, FAKE_GH_LOG: log, FAKE_GH_HEAD: head, FAKE_GH_BASE: base },
+    env: {
+      ...process.env,
+      PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+      FAKE_GIT_BIN: realGit,
+      FAKE_GIT_ORIGIN: root,
+      FAKE_GH_LOG: log,
+      FAKE_GH_HEAD: head,
+      FAKE_GH_BASE: base,
+    },
     cleanup: () => rmSync(tmp, { recursive: true, force: true }),
   };
 }

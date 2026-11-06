@@ -14,16 +14,25 @@ export function tokenize(line: string): Token[] {
   RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = RE.exec(line))) {
-    if (m[0] === '') {
+    if (m[0] === "") {
       RE.lastIndex++;
       continue;
     }
-    if (m.index > last) out.push({ t: line.slice(last, m.index), c: 'var(--fg)' });
-    const c = m[1] ? 'var(--fg3)' : m[2] ? 'var(--syn-str)' : m[3] ? 'var(--syn-kw)' : m[4] ? 'var(--syn-num)' : 'var(--syn-fn)';
+    if (m.index > last)
+      out.push({ t: line.slice(last, m.index), c: "var(--fg)" });
+    const c = m[1]
+      ? "var(--fg3)"
+      : m[2]
+        ? "var(--syn-str)"
+        : m[3]
+          ? "var(--syn-kw)"
+          : m[4]
+            ? "var(--syn-num)"
+            : "var(--syn-fn)";
     out.push({ t: m[0], c, italic: !!m[1] });
     last = RE.lastIndex;
   }
-  if (last < line.length) out.push({ t: line.slice(last), c: 'var(--fg)' });
-  if (!out.length) out.push({ t: ' ', c: 'var(--fg)' });
+  if (last < line.length) out.push({ t: line.slice(last), c: "var(--fg)" });
+  if (!out.length) out.push({ t: " ", c: "var(--fg)" });
   return out;
 }

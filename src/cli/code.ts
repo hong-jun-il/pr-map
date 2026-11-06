@@ -1,5 +1,11 @@
-import type { ChangedFile, CodeEntry, CodeError, CodeRow, Side } from '../shared/types';
-import { git, tryGit } from './git';
+import type {
+  ChangedFile,
+  CodeEntry,
+  CodeError,
+  CodeRow,
+  Side,
+} from "../shared/types";
+import { git, tryGit } from "./git";
 
 export const MAX_FILE_BYTES = 1024 * 1024;
 
@@ -9,7 +15,7 @@ export function parseUnifiedDiff(diff: string): CodeRow[] {
   let o = 0;
   let n = 0;
   let inHunk = false;
-  for (const raw of diff.split('\n')) {
+  for (const raw of diff.split("\n")) {
     const hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(raw);
     if (hunk) {
       o = Number(hunk[1]);
@@ -17,20 +23,25 @@ export function parseUnifiedDiff(diff: string): CodeRow[] {
       inHunk = true;
       continue;
     }
-    if (!inHunk || raw.startsWith('\\')) continue;
+    if (!inHunk || raw.startsWith("\\")) continue;
     const d = raw[0];
-    const t = raw.slice(1).replace(/\r$/, '');
-    if (d === '+') rows.push({ d: '+', t, o: 0, n: n++ });
-    else if (d === '-') rows.push({ d: '-', t, o: o++, n: 0 });
-    else if (d === ' ') rows.push({ d: ' ', t, o: o++, n: n++ });
+    const t = raw.slice(1).replace(/\r$/, "");
+    if (d === "+") rows.push({ d: "+", t, o: 0, n: n++ });
+    else if (d === "-") rows.push({ d: "-", t, o: o++, n: 0 });
+    else if (d === " ") rows.push({ d: " ", t, o: o++, n: n++ });
   }
   return rows;
 }
 
 function plainRows(text: string): CodeRow[] {
-  const lines = text.split('\n');
-  if (lines[lines.length - 1] === '') lines.pop();
-  return lines.map((l, i) => ({ d: ' ', t: l.replace(/\r$/, ''), o: i + 1, n: i + 1 }));
+  const lines = text.split("\n");
+  if (lines[lines.length - 1] === "") lines.pop();
+  return lines.map((l, i) => ({
+    d: " ",
+    t: l.replace(/\r$/, ""),
+    o: i + 1,
+    n: i + 1,
+  }));
 }
 
 export interface LineInfo {
@@ -53,48 +64,71 @@ export class CodeIndex {
     changes: ChangedFile[],
   ) {
     for (const c of changes) {
-      if (c.status !== 'deleted') this.byHead.set(c.path, c);
-      if (c.status !== 'added') this.byBase.set(c.oldPath ?? c.path, c);
+      if (c.status !== "deleted") this.byHead.set(c.path, c);
+      if (c.status !== "added") this.byBase.set(c.oldPath ?? c.path, c);
     }
   }
 
   private sha(side: Side): string {
-    return side === 'base' ? this.base : this.head;
+    return side === "base" ? this.base : this.head;
   }
 
   exists(side: Side, path: string): boolean {
     const key = `${side}:${path}`;
     let hit = this.existsCache.get(key);
     if (hit === undefined) {
-      hit = tryGit(this.root, 'cat-file', '-e', `${this.sha(side)}:${path}`) !== null;
+      hit =
+        tryGit(this.root, "cat-file", "-e", `${this.sha(side)}:${path}`) !==
+        null;
       this.existsCache.set(key, hit);
     }
     return hit;
   }
 
   private problem(side: Side, path: string): CodeError | null {
-    const size = tryGit(this.root, 'cat-file', '-s', `${this.sha(side)}:${path}`);
-    if (size === null) return 'not-found';
-    if (Number(size.trim()) > MAX_FILE_BYTES) return 'too-large';
+    const size = tryGit(
+      this.root,
+      "cat-file",
+      "-s",
+      `${this.sha(side)}:${path}`,
+    );
+    if (size === null) return "not-found";
+    if (Number(size.trim()) > MAX_FILE_BYTES) return "too-large";
     return null;
   }
 
   private read(side: Side, path: string): CodeEntry {
     const problem = this.problem(side, path);
     if (problem) return { error: problem };
-    const text = git(this.root, 'show', `${this.sha(side)}:${path}`);
-    if (text.includes('\0')) return { error: 'binary' };
+    const text = git(this.root, "show", `${this.sha(side)}:${path}`);
+    if (text.includes("\0")) return { error: "binary" };
     return { rows: plainRows(text) };
   }
 
   private diffEntry(change: ChangedFile): CodeEntry {
-    const headSide: Side = change.status === 'deleted' ? 'base' : 'head';
-    const headPath = change.status === 'deleted' ? (change.oldPath ?? change.path) : change.path;
+    const headSide: Side = change.status === "deleted" ? "base" : "head";
+    const headPath =
+      change.status === "deleted"
+        ? (change.oldPath ?? change.path)
+        : change.path;
     const problem = this.problem(headSide, headPath);
     if (problem) return { error: problem };
-    if (change.binary) return { error: 'binary' };
-    const paths = change.oldPath ? [change.oldPath, change.path] : [change.path];
-    const diff = git(this.root, 'diff', '-M', '--no-color', '--no-ext-diff', '--unified=1000000', this.base, this.head, '--', ...paths);
+    if (change.binary) return { error: "binary" };
+    const paths = change.oldPath
+      ? [change.oldPath, change.path]
+      : [change.path];
+    const diff = git(
+      this.root,
+      "diff",
+      "-M",
+      "--no-color",
+      "--no-ext-diff",
+      "--unified=1000000",
+      this.base,
+      this.head,
+      "--",
+      ...paths,
+    );
     const rows = parseUnifiedDiff(diff);
     // 100% 이름 변경이나 모드만 바뀐 파일은 hunk가 없다.
     return rows.length ? { rows } : this.read(headSide, headPath);
@@ -102,7 +136,8 @@ export class CodeIndex {
 
   /** code 맵에서 쓰는 키. 이름 변경 파일은 base·head가 같은 키를 공유한다. */
   key(side: Side, path: string): string {
-    const change = side === 'head' ? this.byHead.get(path) : this.byBase.get(path);
+    const change =
+      side === "head" ? this.byHead.get(path) : this.byBase.get(path);
     return change ? `change:${change.path}` : `${side}:${path}`;
   }
 
@@ -110,7 +145,8 @@ export class CodeIndex {
     const key = this.key(side, path);
     const hit = this.cache.get(key);
     if (hit) return hit;
-    const change = side === 'head' ? this.byHead.get(path) : this.byBase.get(path);
+    const change =
+      side === "head" ? this.byHead.get(path) : this.byBase.get(path);
     const entry = change ? this.diffEntry(change) : this.read(side, path);
     this.cache.set(key, entry);
     return entry;
@@ -128,14 +164,14 @@ export class CodeIndex {
   private computeLines(side: Side, path: string): LineInfo | null {
     if (!this.exists(side, path)) return null;
     const entry = this.entry(side, path);
-    if (!('rows' in entry)) return null;
+    if (!("rows" in entry)) return null;
     const changed = new Set<number>();
     let lineCount = 0;
     for (const r of entry.rows) {
-      const ln = side === 'base' ? r.o : r.n;
+      const ln = side === "base" ? r.o : r.n;
       if (!ln) continue;
       lineCount = Math.max(lineCount, ln);
-      if (r.d === (side === 'base' ? '-' : '+')) changed.add(ln);
+      if (r.d === (side === "base" ? "-" : "+")) changed.add(ln);
     }
     return { lineCount, changed };
   }

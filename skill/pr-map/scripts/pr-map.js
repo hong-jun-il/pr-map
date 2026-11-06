@@ -14869,25 +14869,38 @@ function permalink(repo, sha, ev) {
   return `https://github.com/${repo}/blob/${sha}/${encodePath(ev.path)}${range}`;
 }
 function counts(f) {
-  const parts = [f.additions ? `+${f.additions}` : "", f.deletions ? `\u2212${f.deletions}` : ""].filter(Boolean);
+  const parts = [
+    f.additions ? `+${f.additions}` : "",
+    f.deletions ? `\u2212${f.deletions}` : ""
+  ].filter(Boolean);
   return parts.length ? parts.join(" ") : "\uBCC0\uACBD \uC5C6\uC74C";
 }
 function buildMermaid(data) {
   const ids = new Map(data.files.map((f, i) => [f.id, `n${i}`]));
   const lines = ["flowchart LR"];
   for (const f of data.files) {
-    lines.push(`  ${ids.get(f.id)}["${mermaidLabel(f.name)}<br/>${STATUS_LABEL[f.status]} ${mermaidLabel(counts(f))}"]`);
+    lines.push(
+      `  ${ids.get(f.id)}["${mermaidLabel(f.name)}<br/>${STATUS_LABEL[f.status]} ${mermaidLabel(counts(f))}"]`
+    );
   }
   for (const e of data.edges) {
     const to = data.files.find((f) => f.id === e.to);
     const dashed = e.kind === "replacedBy" || e.unverified || to?.status === "reference";
-    const label = mermaidLabel(e.unverified ? `${e.label} (\uD655\uC778 \uD544\uC694)` : e.label);
-    lines.push(`  ${ids.get(e.from)} ${dashed ? "-.->" : "-->"}|"${label}"| ${ids.get(e.to)}`);
+    const label = mermaidLabel(
+      e.unverified ? `${e.label} (\uD655\uC778 \uD544\uC694)` : e.label
+    );
+    lines.push(
+      `  ${ids.get(e.from)} ${dashed ? "-.->" : "-->"}|"${label}"| ${ids.get(e.to)}`
+    );
   }
-  const dashedFiles = data.files.filter((f) => f.status === "reference" || f.status === "deleted");
+  const dashedFiles = data.files.filter(
+    (f) => f.status === "reference" || f.status === "deleted"
+  );
   if (dashedFiles.length) {
     lines.push("  classDef dashed stroke-dasharray: 4 3");
-    lines.push(`  class ${dashedFiles.map((f) => ids.get(f.id)).join(",")} dashed`);
+    lines.push(
+      `  class ${dashedFiles.map((f) => ids.get(f.id)).join(",")} dashed`
+    );
   }
   return lines.join("\n");
 }
@@ -14911,12 +14924,19 @@ function fileSection(f, open, data, withTree) {
   const lines = [];
   const name = f.name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   lines.push(`<details${open ? " open" : ""}>`);
-  lines.push(`<summary><code>${name}</code> \xB7 ${STATUS_LABEL[f.status]} ${counts(f)}</summary>`, "");
+  lines.push(
+    `<summary><code>${name}</code> \xB7 ${STATUS_LABEL[f.status]} ${counts(f)}</summary>`,
+    ""
+  );
   if (f.status === "deleted") {
-    lines.push(f.replacedByNames.length ? `\uB300\uCCB4 \u2192 ${f.replacedByNames.map(escapeMd).join(", ")}` : "\uB300\uCCB4 \uC5C6\uC74C \xB7 \uAE30\uB2A5 \uC81C\uAC70", "");
+    lines.push(
+      f.replacedByNames.length ? `\uB300\uCCB4 \u2192 ${f.replacedByNames.map(escapeMd).join(", ")}` : "\uB300\uCCB4 \uC5C6\uC74C \xB7 \uAE30\uB2A5 \uC81C\uAC70",
+      ""
+    );
   }
   if (withTree) f.tree.forEach((n) => nodeLines(n, 0, f, data, lines));
-  else lines.push("_\uB313\uAE00 \uAE38\uC774 \uC81C\uD55C\uC73C\uB85C \uC0DD\uB7B5\uD588\uC2B5\uB2C8\uB2E4. \uC804\uCCB4 \uC9C0\uB3C4\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694._");
+  else
+    lines.push("_\uB313\uAE00 \uAE38\uC774 \uC81C\uD55C\uC73C\uB85C \uC0DD\uB7B5\uD588\uC2B5\uB2C8\uB2E4. \uC804\uCCB4 \uC9C0\uB3C4\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694._");
   lines.push("", "</details>");
   return lines.join("\n");
 }
@@ -14961,7 +14981,15 @@ function buildComment(data, runUrl) {
     const body = compose(n);
     if (body.length <= MAX_COMMENT) return body;
   }
-  return [COMMENT_MARKER, "## PR Map", "", escapeMd(pr.summary), "", `\uBD84\uC11D \uCEE4\uBC0B \`${head}\`. \uACB0\uACFC\uAC00 \uB108\uBB34 \uAE38\uC5B4 \uC804\uCCB4 \uC9C0\uB3C4\uC5D0\uC11C\uB9CC \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4. ${viewerHint(runUrl)}`, ""].join("\n");
+  return [
+    COMMENT_MARKER,
+    "## PR Map",
+    "",
+    escapeMd(pr.summary),
+    "",
+    `\uBD84\uC11D \uCEE4\uBC0B \`${head}\`. \uACB0\uACFC\uAC00 \uB108\uBB34 \uAE38\uC5B4 \uC804\uCCB4 \uC9C0\uB3C4\uC5D0\uC11C\uB9CC \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4. ${viewerHint(runUrl)}`,
+    ""
+  ].join("\n");
 }
 
 // src/cli/paths.ts
@@ -15012,7 +15040,11 @@ var pr_map_schema_default = {
           type: ["integer", "null"],
           minimum: 1
         },
-        base: { type: "string", description: "merge-base commit", pattern: "^[0-9a-f]{7,40}$" },
+        base: {
+          type: "string",
+          description: "merge-base commit",
+          pattern: "^[0-9a-f]{7,40}$"
+        },
         head: { type: "string", pattern: "^[0-9a-f]{7,40}$" },
         summary: { type: "string", minLength: 1, maxLength: 200 }
       }
@@ -15055,12 +15087,19 @@ var pr_map_schema_default = {
       properties: {
         id: { $ref: "#/$defs/id" },
         path: { type: "string", minLength: 1 },
-        status: { enum: ["added", "modified", "deleted", "renamed", "reference"] },
+        status: {
+          enum: ["added", "modified", "deleted", "renamed", "reference"]
+        },
         layer: {
           description: "\uC5ED\uD560\uBCC4 \uB808\uC778. entry: \uC9C4\uC785\uC810, core: \uD575\uC2EC \uB85C\uC9C1, store: \uC800\uC7A5\uC18C\xB7\uC778\uD504\uB77C, ext: \uACF5\uD1B5\xB7\uC678\uBD80",
           enum: ["entry", "core", "store", "ext"]
         },
-        role: { description: "\uC774 \uD30C\uC77C\uC774 \uD558\uB294 \uC77C \uD55C \uC904", type: "string", minLength: 1, maxLength: 60 },
+        role: {
+          description: "\uC774 \uD30C\uC77C\uC774 \uD558\uB294 \uC77C \uD55C \uC904",
+          type: "string",
+          minLength: 1,
+          maxLength: 60
+        },
         oldPath: { type: "string", minLength: 1 },
         replacedBy: { type: "array", items: { $ref: "#/$defs/id" } },
         tree: { type: "array", items: { $ref: "#/$defs/node" } }
@@ -15085,18 +15124,27 @@ var pr_map_schema_default = {
       properties: {
         id: { $ref: "#/$defs/id" },
         text: { type: "string", minLength: 1, maxLength: 80 },
-        change: { enum: ["added", "deleted", "modified", "affected", "unchanged"] },
+        change: {
+          enum: ["added", "deleted", "modified", "affected", "unchanged"]
+        },
         affectedBy: {
           type: "object",
           required: ["text", "evidence"],
           additionalProperties: false,
           properties: {
             text: { type: "string", minLength: 1, maxLength: 120 },
-            evidence: { type: "array", minItems: 1, items: { $ref: "#/$defs/evidence" } }
+            evidence: {
+              type: "array",
+              minItems: 1,
+              items: { $ref: "#/$defs/evidence" }
+            }
           }
         },
         unverified: { const: true },
-        evidence: { type: "array", items: { $ref: "#/$defs/evidence" } },
+        evidence: {
+          type: "array",
+          items: { $ref: "#/$defs/evidence" }
+        },
         tests: {
           description: "\uC774 \uBD84\uAE30\uB97C \uD655\uC778\uD558\uB294, \uC774\uBC88 PR\uC5D0\uC11C \uBC14\uB010 \uD14C\uC2A4\uD2B8",
           type: "array",
@@ -15151,7 +15199,10 @@ var pr_map_schema_default = {
         from: { $ref: "#/$defs/id" },
         to: { $ref: "#/$defs/id" },
         label: { type: "string", minLength: 1, maxLength: 40 },
-        unverified: { const: true, description: "\uCF54\uB4DC\uC5D0\uC11C \uD655\uC778\uD558\uC9C0 \uBABB\uD55C \uAD00\uACC4(F06)" }
+        unverified: {
+          const: true,
+          description: "\uCF54\uB4DC\uC5D0\uC11C \uD655\uC778\uD558\uC9C0 \uBABB\uD55C \uAD00\uACC4(F06)"
+        }
       }
     }
   }
@@ -15163,7 +15214,9 @@ var import_node_path2 = __toESM(require("node:path"), 1);
 var import_yaml = __toESM(require_dist(), 1);
 var DEFAULT_MAX_FILES = 50;
 var CODE_EXT = new Set(
-  "ts tsx mts cts js jsx mjs cjs vue svelte py go java kt kts rb rs c h cc cpp hpp cs php swift scala sh bash sql".split(" ")
+  "ts tsx mts cts js jsx mjs cjs vue svelte py go java kt kts rb rs c h cc cpp hpp cs php swift scala sh bash sql".split(
+    " "
+  )
 );
 var DOC_EXT = new Set("md mdx rst txt adoc".split(" "));
 var GENERATED_NAME = /* @__PURE__ */ new Set([
@@ -15186,9 +15239,12 @@ function readConfig(root) {
   const file = import_node_path2.default.join(root, ".pr-map.yml");
   const config = { exclude: [], maxFiles: DEFAULT_MAX_FILES };
   if (!(0, import_node_fs2.existsSync)(file)) return config;
-  const raw = (0, import_yaml.parse)((0, import_node_fs2.readFileSync)(file, "utf8"));
+  const raw = (0, import_yaml.parse)(
+    (0, import_node_fs2.readFileSync)(file, "utf8")
+  );
   if (Array.isArray(raw?.exclude)) config.exclude = raw.exclude.map(String);
-  if (typeof raw?.maxFiles === "number" && raw.maxFiles > 0) config.maxFiles = raw.maxFiles;
+  if (typeof raw?.maxFiles === "number" && raw.maxFiles > 0)
+    config.maxFiles = raw.maxFiles;
   if (raw?.includeTests === true) config.includeTests = true;
   return config;
 }
@@ -15214,11 +15270,18 @@ function reasonFor(file, excludes, includeTests) {
   const name = import_node_path2.default.posix.basename(file.path);
   const ext = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : "";
   if (file.binary) return { reason: "\uBC14\uC774\uB108\uB9AC", category: "other" };
-  if (excludes.some((re) => re.test(file.path))) return { reason: ".pr-map.yml \uC81C\uC678", category: "excluded" };
-  if (!includeTests && TEST_PATH.test(file.path)) return { reason: "\uD14C\uC2A4\uD2B8 \xB7 \uAE30\uBCF8 \uC81C\uC678", category: CODE_EXT.has(ext) ? "test" : "fixture" };
-  if (GENERATED_NAME.has(name) || GENERATED_PATH.test(file.path)) return { reason: "\uC790\uB3D9 \uC0DD\uC131 \xB7 \uC81C\uC678 \uADDC\uCE59", category: "generated" };
+  if (excludes.some((re) => re.test(file.path)))
+    return { reason: ".pr-map.yml \uC81C\uC678", category: "excluded" };
+  if (!includeTests && TEST_PATH.test(file.path))
+    return {
+      reason: "\uD14C\uC2A4\uD2B8 \xB7 \uAE30\uBCF8 \uC81C\uC678",
+      category: CODE_EXT.has(ext) ? "test" : "fixture"
+    };
+  if (GENERATED_NAME.has(name) || GENERATED_PATH.test(file.path))
+    return { reason: "\uC790\uB3D9 \uC0DD\uC131 \xB7 \uC81C\uC678 \uADDC\uCE59", category: "generated" };
   if (DOC_EXT.has(ext)) return { reason: "\uBB38\uC11C", category: "doc" };
-  if (!CODE_EXT.has(ext)) return { reason: "\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uD615\uC2DD", category: "other" };
+  if (!CODE_EXT.has(ext))
+    return { reason: "\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uD615\uC2DD", category: "other" };
   return null;
 }
 function classify(files, config) {
@@ -15230,11 +15293,18 @@ function classify(files, config) {
     if (found) unclassified.push({ ...f, ...found });
     else kept.push(f);
   }
-  const ranked = [...kept].sort((a, b) => b.additions + b.deletions - (a.additions + a.deletions) || a.path.localeCompare(b.path));
+  const ranked = [...kept].sort(
+    (a, b) => b.additions + b.deletions - (a.additions + a.deletions) || a.path.localeCompare(b.path)
+  );
   const allowed = new Set(ranked.slice(0, config.maxFiles).map((f) => f.path));
   const mapped = kept.filter((f) => allowed.has(f.path));
   for (const f of kept) {
-    if (!allowed.has(f.path)) unclassified.push({ ...f, reason: `\uBD84\uC11D \uC0C1\uD55C ${config.maxFiles}\uAC1C \uCD08\uACFC`, category: "attention" });
+    if (!allowed.has(f.path))
+      unclassified.push({
+        ...f,
+        reason: `\uBD84\uC11D \uC0C1\uD55C ${config.maxFiles}\uAC1C \uCD08\uACFC`,
+        category: "attention"
+      });
   }
   return { files: mapped, unclassified };
 }
@@ -15244,11 +15314,17 @@ var MAX_DEPTH = 4;
 var ajv = new import__.Ajv2020({ allErrors: true, strict: false });
 var validateSchema = ajv.compile(pr_map_schema_default);
 function formatPointer(ptr) {
-  return ptr.split("/").filter(Boolean).reduce((acc, seg) => /^\d+$/.test(seg) ? `${acc}[${seg}]` : acc ? `${acc}.${seg}` : seg, "");
+  return ptr.split("/").filter(Boolean).reduce(
+    (acc, seg) => /^\d+$/.test(seg) ? `${acc}[${seg}]` : acc ? `${acc}.${seg}` : seg,
+    ""
+  );
 }
 function checkSchema(map) {
   if (validateSchema(map)) return [];
-  return (validateSchema.errors ?? []).filter((e) => e.keyword !== "if").map((e) => ({ path: formatPointer(e.instancePath) || "(\uCD5C\uC0C1\uC704)", reason: `\uC2A4\uD0A4\uB9C8: ${e.message}` }));
+  return (validateSchema.errors ?? []).filter((e) => e.keyword !== "if").map((e) => ({
+    path: formatPointer(e.instancePath) || "(\uCD5C\uC0C1\uC704)",
+    reason: `\uC2A4\uD0A4\uB9C8: ${e.message}`
+  }));
 }
 function normalize(map, input) {
   map.pr.repo = input.pr.repo;
@@ -15266,23 +15342,39 @@ function locate(evidence, path7, code, renamed, out, node) {
   evidence.forEach((ev, i) => {
     const p = `${path7}[${i}]`;
     if (ev.start > ev.end) {
-      out.push({ path: p, reason: `start(${ev.start})\uAC00 end(${ev.end})\uBCF4\uB2E4 \uD07D\uB2C8\uB2E4.`, node });
+      out.push({
+        path: p,
+        reason: `start(${ev.start})\uAC00 end(${ev.end})\uBCF4\uB2E4 \uD07D\uB2C8\uB2E4.`,
+        node
+      });
       ok = false;
       return;
     }
     if (ev.side === "base" && renamed.has(ev.path)) {
-      out.push({ path: p, reason: `\uC774\uB984 \uBCC0\uACBD \uD30C\uC77C\uC758 base \uADFC\uAC70\uB294 oldPath(${renamed.get(ev.path)})\uB97C \uC368\uC57C \uD569\uB2C8\uB2E4.`, node });
+      out.push({
+        path: p,
+        reason: `\uC774\uB984 \uBCC0\uACBD \uD30C\uC77C\uC758 base \uADFC\uAC70\uB294 oldPath(${renamed.get(ev.path)})\uB97C \uC368\uC57C \uD569\uB2C8\uB2E4.`,
+        node
+      });
       ok = false;
       return;
     }
     const info = code.lines(ev.side, ev.path);
     if (!info) {
-      out.push({ path: p, reason: `${ev.side} \uCEE4\uBC0B\uC5D0\uC11C ${ev.path}\uB97C \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`, node });
+      out.push({
+        path: p,
+        reason: `${ev.side} \uCEE4\uBC0B\uC5D0\uC11C ${ev.path}\uB97C \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`,
+        node
+      });
       ok = false;
       return;
     }
     if (ev.end > info.lineCount) {
-      out.push({ path: p, reason: `end(${ev.end})\uAC00 ${ev.side}\uC758 ${ev.path} \uC904 \uC218(${info.lineCount})\uB97C \uB118\uC2B5\uB2C8\uB2E4.`, node });
+      out.push({
+        path: p,
+        reason: `end(${ev.end})\uAC00 ${ev.side}\uC758 ${ev.path} \uC904 \uC218(${info.lineCount})\uB97C \uB118\uC2B5\uB2C8\uB2E4.`,
+        node
+      });
       ok = false;
       return;
     }
@@ -15292,98 +15384,217 @@ function locate(evidence, path7, code, renamed, out, node) {
 }
 function checkNode(n, path7, depth, file, code, renamed, ids, out) {
   const node = { file: file.id, id: n.id };
-  if (ids.has(n.id)) out.push({ path: path7, reason: `\uB178\uB4DC id "${n.id}"\uAC00 \uD30C\uC77C \uC548\uC5D0\uC11C \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+  if (ids.has(n.id))
+    out.push({ path: path7, reason: `\uB178\uB4DC id "${n.id}"\uAC00 \uD30C\uC77C \uC548\uC5D0\uC11C \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
   ids.add(n.id);
-  if (depth > MAX_DEPTH) out.push({ path: path7, reason: `\uD2B8\uB9AC \uAE4A\uC774\uAC00 ${MAX_DEPTH}\uB2E8\uACC4\uB97C \uB118\uC2B5\uB2C8\uB2E4. \uBB36\uC5B4\uC11C \uC904\uC774\uC138\uC694.` });
-  if (file.status === "added" && n.change !== "added") out.push({ path: path7, reason: "\uCD94\uAC00\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 added\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
-  if (file.status === "deleted" && n.change !== "deleted") out.push({ path: path7, reason: "\uC0AD\uC81C\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 deleted\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
+  if (depth > MAX_DEPTH)
+    out.push({
+      path: path7,
+      reason: `\uD2B8\uB9AC \uAE4A\uC774\uAC00 ${MAX_DEPTH}\uB2E8\uACC4\uB97C \uB118\uC2B5\uB2C8\uB2E4. \uBB36\uC5B4\uC11C \uC904\uC774\uC138\uC694.`
+    });
+  if (file.status === "added" && n.change !== "added")
+    out.push({
+      path: path7,
+      reason: "\uCD94\uAC00\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 added\uC5EC\uC57C \uD569\uB2C8\uB2E4.",
+      node
+    });
+  if (file.status === "deleted" && n.change !== "deleted")
+    out.push({
+      path: path7,
+      reason: "\uC0AD\uC81C\uB41C \uD30C\uC77C\uC758 \uB178\uB4DC\uB294 \uBAA8\uB450 deleted\uC5EC\uC57C \uD569\uB2C8\uB2E4.",
+      node
+    });
   if (!n.unverified) {
-    const located = locate(n.evidence, `${path7}.evidence`, code, renamed, out, node);
+    const located = locate(
+      n.evidence,
+      `${path7}.evidence`,
+      code,
+      renamed,
+      out,
+      node
+    );
     if (located) {
       const anyChanged = located.some((l) => l.changed);
       if (n.change === "added") {
-        if (!located.some((l) => l.changed && l.ev.side === "head")) out.push({ path: path7, reason: "added \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 head\uC758 + \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", node });
+        if (!located.some((l) => l.changed && l.ev.side === "head"))
+          out.push({
+            path: path7,
+            reason: "added \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 head\uC758 + \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+            node
+          });
       } else if (n.change === "deleted") {
-        if (located.some((l) => l.ev.side !== "base")) out.push({ path: path7, reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uB294 \uBAA8\uB450 base\uC5EC\uC57C \uD569\uB2C8\uB2E4.", node });
-        if (!located.some((l) => l.changed && l.ev.side === "base")) out.push({ path: path7, reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 base\uC758 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", node });
+        if (located.some((l) => l.ev.side !== "base"))
+          out.push({
+            path: path7,
+            reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uB294 \uBAA8\uB450 base\uC5EC\uC57C \uD569\uB2C8\uB2E4.",
+            node
+          });
+        if (!located.some((l) => l.changed && l.ev.side === "base"))
+          out.push({
+            path: path7,
+            reason: "deleted \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 base\uC758 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+            node
+          });
       } else if (n.change === "modified") {
-        if (!anyChanged) out.push({ path: path7, reason: "modified \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 + \uB610\uB294 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC790\uC2E0\uC758 \uCF54\uB4DC\uAC00 \uADF8\uB300\uB85C\uBA74 unchanged\uB85C \uC4F0\uC138\uC694.", node });
+        if (!anyChanged)
+          out.push({
+            path: path7,
+            reason: "modified \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 + \uB610\uB294 \u2212 \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC790\uC2E0\uC758 \uCF54\uB4DC\uAC00 \uADF8\uB300\uB85C\uBA74 unchanged\uB85C \uC4F0\uC138\uC694.",
+            node
+          });
       } else if (anyChanged) {
-        out.push({ path: path7, reason: `${n.change} \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE69\uB2C8\uB2E4.`, node });
+        out.push({
+          path: path7,
+          reason: `${n.change} \uB178\uB4DC\uC758 \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE69\uB2C8\uB2E4.`,
+          node
+        });
       }
     }
     if (n.change === "affected" && n.affectedBy) {
-      const cause = locate(n.affectedBy.evidence, `${path7}.affectedBy.evidence`, code, renamed, out, node);
-      if (cause && !cause.some((l) => l.changed)) out.push({ path: path7, reason: "affectedBy \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC6D0\uC778\uC744 \uD2B9\uC815\uD558\uC9C0 \uBABB\uD558\uBA74 affected\uB85C \uC4F0\uC9C0 \uB9C8\uC138\uC694.", node });
+      const cause = locate(
+        n.affectedBy.evidence,
+        `${path7}.affectedBy.evidence`,
+        code,
+        renamed,
+        out,
+        node
+      );
+      if (cause && !cause.some((l) => l.changed))
+        out.push({
+          path: path7,
+          reason: "affectedBy \uADFC\uAC70\uAC00 \uBCC0\uACBD \uC904\uACFC \uACB9\uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC6D0\uC778\uC744 \uD2B9\uC815\uD558\uC9C0 \uBABB\uD558\uBA74 affected\uB85C \uC4F0\uC9C0 \uB9C8\uC138\uC694.",
+          node
+        });
     }
   }
-  n.children?.forEach((c, i) => checkNode(c, `${path7}.children[${i}]`, depth + 1, file, code, renamed, ids, out));
+  n.children?.forEach(
+    (c, i) => checkNode(
+      c,
+      `${path7}.children[${i}]`,
+      depth + 1,
+      file,
+      code,
+      renamed,
+      ids,
+      out
+    )
+  );
 }
 function checkRules(map, input, code) {
   const out = [];
-  const changed = new Map(input.files.map((f) => [f.path, f]));
-  const allChanged = new Set([...input.files, ...input.unclassified].map((f) => f.path));
+  const changed = new Map(
+    input.files.map((f) => [f.path, f])
+  );
+  const allChanged = new Set(
+    [...input.files, ...input.unclassified].map((f) => f.path)
+  );
   const unclassified = new Set(input.unclassified.map((f) => f.path));
-  const renamed = new Map(input.files.filter((f) => f.oldPath).map((f) => [f.path, f.oldPath]));
+  const renamed = new Map(
+    input.files.filter((f) => f.oldPath).map((f) => [f.path, f.oldPath])
+  );
   const fileIds = /* @__PURE__ */ new Map();
   map.files.forEach((f, i) => {
     const path7 = `files[${i}]`;
-    if (fileIds.has(f.id)) out.push({ path: path7, reason: `\uD30C\uC77C id "${f.id}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+    if (fileIds.has(f.id))
+      out.push({ path: path7, reason: `\uD30C\uC77C id "${f.id}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
     fileIds.set(f.id, f);
-    if (unclassified.has(f.path)) out.push({ path: path7, reason: `\uBBF8\uBD84\uB958 \uD30C\uC77C ${f.path}\uB294 files\uC5D0 \uB123\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.` });
+    if (unclassified.has(f.path))
+      out.push({
+        path: path7,
+        reason: `\uBBF8\uBD84\uB958 \uD30C\uC77C ${f.path}\uB294 files\uC5D0 \uB123\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      });
     const c = changed.get(f.path);
     if (f.status === "reference") {
-      if (allChanged.has(f.path)) out.push({ path: path7, reason: `${f.path}\uB294 \uBCC0\uACBD\uB41C \uD30C\uC77C\uC774\uB77C reference\uB85C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` });
-      else if (!code.exists("head", f.path)) out.push({ path: path7, reason: `\uCC38\uACE0 \uD30C\uC77C ${f.path}\uAC00 head\uC5D0 \uC5C6\uC2B5\uB2C8\uB2E4.` });
+      if (allChanged.has(f.path))
+        out.push({
+          path: path7,
+          reason: `${f.path}\uB294 \uBCC0\uACBD\uB41C \uD30C\uC77C\uC774\uB77C reference\uB85C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+        });
+      else if (!code.exists("head", f.path))
+        out.push({ path: path7, reason: `\uCC38\uACE0 \uD30C\uC77C ${f.path}\uAC00 head\uC5D0 \uC5C6\uC2B5\uB2C8\uB2E4.` });
     } else if (!c) {
-      if (!unclassified.has(f.path)) out.push({ path: path7, reason: `${f.path}\uB294 input.json\uC758 \uBCC0\uACBD \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uBCC0\uACBD \uC5C6\uB294 \uD30C\uC77C\uC740 reference\uB85C \uC4F0\uC138\uC694.` });
+      if (!unclassified.has(f.path))
+        out.push({
+          path: path7,
+          reason: `${f.path}\uB294 input.json\uC758 \uBCC0\uACBD \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uBCC0\uACBD \uC5C6\uB294 \uD30C\uC77C\uC740 reference\uB85C \uC4F0\uC138\uC694.`
+        });
     } else {
-      if (c.status !== f.status) out.push({ path: path7, reason: `status\uB294 input.json \uAC12(${c.status})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.` });
-      if (c.oldPath !== f.oldPath) out.push({ path: path7, reason: `oldPath\uB294 input.json \uAC12(${c.oldPath ?? "\uC5C6\uC74C"})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.` });
+      if (c.status !== f.status)
+        out.push({
+          path: path7,
+          reason: `status\uB294 input.json \uAC12(${c.status})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.`
+        });
+      if (c.oldPath !== f.oldPath)
+        out.push({
+          path: path7,
+          reason: `oldPath\uB294 input.json \uAC12(${c.oldPath ?? "\uC5C6\uC74C"})\uACFC \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4.`
+        });
     }
     const ids = /* @__PURE__ */ new Set();
-    f.tree.forEach((n, j) => checkNode(n, `${path7}.tree[${j}]`, 1, f, code, renamed, ids, out));
+    f.tree.forEach(
+      (n, j) => checkNode(n, `${path7}.tree[${j}]`, 1, f, code, renamed, ids, out)
+    );
   });
   map.files.forEach((f, i) => {
     f.replacedBy?.forEach((id, j) => {
-      if (!fileIds.has(id)) out.push({ path: `files[${i}].replacedBy[${j}]`, reason: `\uC5C6\uB294 \uD30C\uC77C id "${id}"\uC785\uB2C8\uB2E4.` });
+      if (!fileIds.has(id))
+        out.push({
+          path: `files[${i}].replacedBy[${j}]`,
+          reason: `\uC5C6\uB294 \uD30C\uC77C id "${id}"\uC785\uB2C8\uB2E4.`
+        });
     });
   });
   map.edges.forEach((e, i) => {
     const path7 = `edges[${i}]`;
-    if (!fileIds.has(e.from)) out.push({ path: path7, reason: `from "${e.from}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
-    if (!fileIds.has(e.to)) out.push({ path: path7, reason: `to "${e.to}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
+    if (!fileIds.has(e.from))
+      out.push({ path: path7, reason: `from "${e.from}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
+    if (!fileIds.has(e.to))
+      out.push({ path: path7, reason: `to "${e.to}"\uB294 \uC5C6\uB294 \uD30C\uC77C id\uC785\uB2C8\uB2E4.` });
   });
   const ordered = /* @__PURE__ */ new Set();
   map.readingOrder.forEach((step, i) => {
     const path7 = `readingOrder[${i}]`;
     const target = fileIds.get(step.file);
-    if (!target) out.push({ path: path7, reason: `\uC5C6\uB294 \uD30C\uC77C id "${step.file}"\uC785\uB2C8\uB2E4.` });
-    else if (target.status === "reference") out.push({ path: path7, reason: `\uCC38\uACE0 \uD30C\uC77C "${step.file}"\uB294 \uC77D\uB294 \uC21C\uC11C\uC5D0 \uB123\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` });
-    if (ordered.has(step.file)) out.push({ path: path7, reason: `\uD30C\uC77C id "${step.file}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
+    if (!target)
+      out.push({ path: path7, reason: `\uC5C6\uB294 \uD30C\uC77C id "${step.file}"\uC785\uB2C8\uB2E4.` });
+    else if (target.status === "reference")
+      out.push({
+        path: path7,
+        reason: `\uCC38\uACE0 \uD30C\uC77C "${step.file}"\uB294 \uC77D\uB294 \uC21C\uC11C\uC5D0 \uB123\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+      });
+    if (ordered.has(step.file))
+      out.push({ path: path7, reason: `\uD30C\uC77C id "${step.file}"\uAC00 \uC911\uBCF5\uB429\uB2C8\uB2E4.` });
     ordered.add(step.file);
   });
   return out;
 }
 function testProblem(t, n, changedPaths, code) {
-  if (n.unverified || n.change === "unchanged" || n.change === "deleted") return "\uBC14\uB010 \uBD84\uAE30\uAC00 \uC544\uB2D9\uB2C8\uB2E4";
-  if (!isTestPath(t.path) || !changedPaths.has(t.path)) return "\uC774\uBC88 PR\uC5D0\uC11C \uBC14\uB010 \uD14C\uC2A4\uD2B8 \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4";
+  if (n.unverified || n.change === "unchanged" || n.change === "deleted")
+    return "\uBC14\uB010 \uBD84\uAE30\uAC00 \uC544\uB2D9\uB2C8\uB2E4";
+  if (!isTestPath(t.path) || !changedPaths.has(t.path))
+    return "\uC774\uBC88 PR\uC5D0\uC11C \uBC14\uB010 \uD14C\uC2A4\uD2B8 \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4";
   if (t.start > t.end) return `start(${t.start})\uAC00 end(${t.end})\uBCF4\uB2E4 \uD07D\uB2C8\uB2E4`;
   const info = code.lines("head", t.path);
   if (!info) return `head \uCEE4\uBC0B\uC5D0\uC11C \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4`;
-  if (t.end > info.lineCount) return `end(${t.end})\uAC00 \uC904 \uC218(${info.lineCount})\uB97C \uB118\uC2B5\uB2C8\uB2E4`;
+  if (t.end > info.lineCount)
+    return `end(${t.end})\uAC00 \uC904 \uC218(${info.lineCount})\uB97C \uB118\uC2B5\uB2C8\uB2E4`;
   for (let i = t.start; i <= t.end; i++) if (info.changed.has(i)) return null;
   return "\uC774\uBC88 PR\uC5D0\uC11C \uBC14\uB010 \uC904\uC774 \uC544\uB2D9\uB2C8\uB2E4";
 }
 function pruneTests(map, input, code) {
-  const changedPaths = new Set([...input.files, ...input.unclassified].map((f) => f.path));
+  const changedPaths = new Set(
+    [...input.files, ...input.unclassified].map((f) => f.path)
+  );
   const log = [];
   const walk = (nodes, file) => {
     for (const n of nodes) {
       if (n.tests) {
         n.tests = n.tests.filter((t) => {
           const reason = testProblem(t, n, changedPaths, code);
-          if (reason) log.push(`${file.path}: ${n.id} \u2190 ${t.path} L${t.start}-${t.end} (${reason})`);
+          if (reason)
+            log.push(
+              `${file.path}: ${n.id} \u2190 ${t.path} L${t.start}-${t.end} (${reason})`
+            );
           return !reason;
         });
         if (!n.tests.length) delete n.tests;
@@ -15396,7 +15607,9 @@ function pruneTests(map, input, code) {
 }
 function evidenceLines(n) {
   const set = /* @__PURE__ */ new Set();
-  for (const ev of n.evidence) for (let i = ev.start; i <= ev.end; i++) set.add(`${ev.side}:${ev.path}:${i}`);
+  for (const ev of n.evidence)
+    for (let i = ev.start; i <= ev.end; i++)
+      set.add(`${ev.side}:${ev.path}:${i}`);
   return set;
 }
 function overlapRatio(a, b) {
@@ -15417,7 +15630,9 @@ function stabilizeIds(map, previous) {
         let match = prevSiblings.find((p) => p.id === n.id);
         if (!match) {
           const lines = evidenceLines(n);
-          match = prevSiblings.find((p) => !taken.has(p.id) && overlapRatio(lines, evidenceLines(p)) >= 0.8);
+          match = prevSiblings.find(
+            (p) => !taken.has(p.id) && overlapRatio(lines, evidenceLines(p)) >= 0.8
+          );
           if (match) {
             log.push(`${file.path}: ${n.id} \u2192 ${match.id}`);
             taken.add(match.id);
@@ -15432,7 +15647,9 @@ function stabilizeIds(map, previous) {
   return log;
 }
 function demote(map, problems) {
-  const targets = new Set(problems.filter((p) => p.node).map((p) => `${p.node.file}\0${p.node.id}`));
+  const targets = new Set(
+    problems.filter((p) => p.node).map((p) => `${p.node.file}\0${p.node.id}`)
+  );
   const demoted = [];
   for (const file of map.files) {
     const walk = (nodes) => {
@@ -15483,7 +15700,8 @@ function collectTests(nodes, out) {
 }
 function callersText(f, candidates) {
   const callers = candidates.filter((c) => c.to === f.path).map((c) => c.from);
-  if (!/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(f.path)) return "\uB0A8\uC740 \uD638\uCD9C \uD655\uC778 \uC548 \uD568";
+  if (!/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(f.path))
+    return "\uB0A8\uC740 \uD638\uCD9C \uD655\uC778 \uC548 \uD568";
   return callers.length ? `head\uC5D0 \uB0A8\uC740 \uD638\uCD9C ${callers.length}\uACF3` : "head\uC5D0 \uB0A8\uC740 \uD638\uCD9C \uC5C6\uC74C";
 }
 function buildViewerData(map, input, code) {
@@ -15521,12 +15739,28 @@ function buildViewerData(map, input, code) {
   const linkedTests = new Set(tests.map((t) => t.path));
   const mapped = new Set(map.files.map((f) => f.path));
   const unclassified = [
-    ...input.unclassified.map((f) => f.category === "test" ? { ...f, reason: linkedTests.has(f.path) ? LINKED_TEST : "\uC5F0\uACB0\uB41C \uBD84\uAE30 \uC5C6\uC74C" } : f),
-    ...input.files.filter((f) => !mapped.has(f.path)).map((f) => ({ ...f, reason: "\uBD84\uC11D \uACB0\uACFC \uC5C6\uC74C", category: "attention" }))
+    ...input.unclassified.map(
+      (f) => f.category === "test" ? {
+        ...f,
+        reason: linkedTests.has(f.path) ? LINKED_TEST : "\uC5F0\uACB0\uB41C \uBD84\uAE30 \uC5C6\uC74C"
+      } : f
+    ),
+    ...input.files.filter((f) => !mapped.has(f.path)).map((f) => ({
+      ...f,
+      reason: "\uBD84\uC11D \uACB0\uACFC \uC5C6\uC74C",
+      category: "attention"
+    }))
   ];
   const edges = [
     ...map.edges.map((e) => ({ ...e, kind: "calls" })),
-    ...map.files.flatMap((f) => (f.replacedBy ?? []).map((to) => ({ from: f.id, to, label: "\uB300\uCCB4\uB428", kind: "replacedBy" })))
+    ...map.files.flatMap(
+      (f) => (f.replacedBy ?? []).map((to) => ({
+        from: f.id,
+        to,
+        label: "\uB300\uCCB4\uB428",
+        kind: "replacedBy"
+      }))
+    )
   ];
   return {
     status: "ready",
@@ -15551,8 +15785,12 @@ function assetsDir() {
   return import_node_path3.default.join(__dirname, "..", "assets");
 }
 function renderHtml(data, template = (0, import_node_fs3.readFileSync)(import_node_path3.default.join(assetsDir(), "viewer.html"), "utf8")) {
-  if (!template.includes(DATA_SLOT)) throw new Error("viewer.html\uC5D0 \uB370\uC774\uD130 \uC790\uB9AC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
-  const json = JSON.stringify(data).replace(/[<\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  if (!template.includes(DATA_SLOT))
+    throw new Error("viewer.html\uC5D0 \uB370\uC774\uD130 \uC790\uB9AC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
+  const json = JSON.stringify(data).replace(
+    /[<\u2028\u2029]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`
+  );
   return template.replace(DATA_SLOT, () => json);
 }
 function writeViewer(root, data) {
@@ -15564,7 +15802,10 @@ function build(root, map, input, code) {
   const data = buildViewerData(map, input, code);
   writeJson(viewerDataPath(root), data);
   writeViewer(root, data);
-  writeText(commentPath(root), buildComment(data, process.env.PR_MAP_RUN_URL || void 0));
+  writeText(
+    commentPath(root),
+    buildComment(data, process.env.PR_MAP_RUN_URL || void 0)
+  );
   return data;
 }
 
@@ -15643,7 +15884,12 @@ function parseUnifiedDiff(diff) {
 function plainRows(text) {
   const lines = text.split("\n");
   if (lines[lines.length - 1] === "") lines.pop();
-  return lines.map((l, i) => ({ d: " ", t: l.replace(/\r$/, ""), o: i + 1, n: i + 1 }));
+  return lines.map((l, i) => ({
+    d: " ",
+    t: l.replace(/\r$/, ""),
+    o: i + 1,
+    n: i + 1
+  }));
 }
 var CodeIndex = class {
   constructor(root, base, head, changes) {
@@ -15673,7 +15919,12 @@ var CodeIndex = class {
     return hit;
   }
   problem(side, path7) {
-    const size = tryGit(this.root, "cat-file", "-s", `${this.sha(side)}:${path7}`);
+    const size = tryGit(
+      this.root,
+      "cat-file",
+      "-s",
+      `${this.sha(side)}:${path7}`
+    );
     if (size === null) return "not-found";
     if (Number(size.trim()) > MAX_FILE_BYTES) return "too-large";
     return null;
@@ -15692,7 +15943,18 @@ var CodeIndex = class {
     if (problem) return { error: problem };
     if (change.binary) return { error: "binary" };
     const paths = change.oldPath ? [change.oldPath, change.path] : [change.path];
-    const diff = git(this.root, "diff", "-M", "--no-color", "--no-ext-diff", "--unified=1000000", this.base, this.head, "--", ...paths);
+    const diff = git(
+      this.root,
+      "diff",
+      "-M",
+      "--no-color",
+      "--no-ext-diff",
+      "--unified=1000000",
+      this.base,
+      this.head,
+      "--",
+      ...paths
+    );
     const rows = parseUnifiedDiff(diff);
     return rows.length ? { rows } : this.read(headSide, headPath);
   }
@@ -15750,13 +16012,16 @@ function parseImports(source) {
   let m;
   while (m = fromRe.exec(text)) {
     const named = /\{([^}]*)\}/.exec(m[1]);
-    const symbols = named ? named[1].split(",").map((s) => s.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim()).filter(Boolean) : [];
+    const symbols = named ? named[1].split(",").map(
+      (s) => s.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim()
+    ).filter(Boolean) : [];
     const def = /^([A-Za-z_$][\w$]*)/.exec(m[1]);
     if (def) symbols.unshift(def[1]);
     out.push({ spec: m[2], symbols });
   }
   const bareRe = /(?:^|[\s;])import\s*['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)|\brequire\(\s*['"]([^'"]+)['"]\s*\)/g;
-  while (m = bareRe.exec(text)) out.push({ spec: m[1] ?? m[2] ?? m[3], symbols: [] });
+  while (m = bareRe.exec(text))
+    out.push({ spec: m[1] ?? m[2] ?? m[3], symbols: [] });
   return out;
 }
 function parseJsonc(text) {
@@ -15783,17 +16048,24 @@ function readAliases(root, head) {
   try {
     const cfg = parseJsonc(raw);
     const baseUrl = cfg.compilerOptions?.baseUrl ?? ".";
-    return Object.entries(cfg.compilerOptions?.paths ?? {}).map(([pattern, targets]) => {
-      const [prefix = "", suffix = ""] = pattern.split("*");
-      return { prefix, suffix, targets: targets.map((t) => import_node_path4.default.posix.join(baseUrl, t)) };
-    });
+    return Object.entries(cfg.compilerOptions?.paths ?? {}).map(
+      ([pattern, targets]) => {
+        const [prefix = "", suffix = ""] = pattern.split("*");
+        return {
+          prefix,
+          suffix,
+          targets: targets.map((t) => import_node_path4.default.posix.join(baseUrl, t))
+        };
+      }
+    );
   } catch {
     return [];
   }
 }
 function resolveSpec(spec, from, tree, aliases) {
   const bases = [];
-  if (spec.startsWith(".")) bases.push(import_node_path4.default.posix.join(import_node_path4.default.posix.dirname(from), spec));
+  if (spec.startsWith("."))
+    bases.push(import_node_path4.default.posix.join(import_node_path4.default.posix.dirname(from), spec));
   else {
     for (const a of aliases) {
       if (spec.startsWith(a.prefix) && spec.endsWith(a.suffix) && spec.length >= a.prefix.length + a.suffix.length) {
@@ -15809,7 +16081,8 @@ function resolveSpec(spec, from, tree, aliases) {
     if (noJs !== b) {
       for (const e of EXTS) if (tree.has(noJs + e)) return noJs + e;
     }
-    for (const e of EXTS) if (tree.has(`${b}/index${e}`)) return `${b}/index${e}`;
+    for (const e of EXTS)
+      if (tree.has(`${b}/index${e}`)) return `${b}/index${e}`;
   }
   return null;
 }
@@ -15817,10 +16090,14 @@ function collectCandidates(root, base, head, files) {
   const targets = files.filter((f) => TSJS.test(f.path));
   if (!targets.length) return [];
   const aliases = readAliases(root, head);
-  const headTree = new Set(git(root, "ls-tree", "-r", "--name-only", head).split("\n").filter(Boolean));
+  const headTree = new Set(
+    git(root, "ls-tree", "-r", "--name-only", head).split("\n").filter(Boolean)
+  );
   const deleted = targets.filter((f) => f.status === "deleted").map((f) => f.path);
   const resolveTree = /* @__PURE__ */ new Set([...headTree, ...deleted]);
-  const baseTree = deleted.length ? new Set(git(root, "ls-tree", "-r", "--name-only", base).split("\n").filter(Boolean)) : headTree;
+  const baseTree = deleted.length ? new Set(
+    git(root, "ls-tree", "-r", "--name-only", base).split("\n").filter(Boolean)
+  ) : headTree;
   const seen = /* @__PURE__ */ new Map();
   const add = (from, to, symbols) => {
     if (from === to) return;
@@ -15834,7 +16111,12 @@ function collectCandidates(root, base, head, files) {
     const src = tryGit(root, "show", `${side}:${f.path}`);
     if (src === null) continue;
     for (const imp of parseImports(src)) {
-      const to = resolveSpec(imp.spec, f.path, f.status === "deleted" ? baseTree : headTree, aliases);
+      const to = resolveSpec(
+        imp.spec,
+        f.path,
+        f.status === "deleted" ? baseTree : headTree,
+        aliases
+      );
       if (to) add(f.path, to, imp.symbols);
     }
   }
@@ -15842,7 +16124,24 @@ function collectCandidates(root, base, head, files) {
   for (const f of targets) {
     const name = import_node_path4.default.posix.basename(f.path).replace(TSJS, "");
     const stem = name === "index" ? import_node_path4.default.posix.basename(import_node_path4.default.posix.dirname(f.path)) : name;
-    const grep = tryGit(root, "grep", "-l", "-F", "-e", stem, head, "--", "*.ts", "*.tsx", "*.mts", "*.cts", "*.js", "*.jsx", "*.mjs", "*.cjs");
+    const grep = tryGit(
+      root,
+      "grep",
+      "-l",
+      "-F",
+      "-e",
+      stem,
+      head,
+      "--",
+      "*.ts",
+      "*.tsx",
+      "*.mts",
+      "*.cts",
+      "*.js",
+      "*.jsx",
+      "*.mjs",
+      "*.cjs"
+    );
     if (!grep) continue;
     const hits = grep.split("\n").filter(Boolean).map((l) => l.slice(l.indexOf(":") + 1)).slice(0, MAX_SCANNED_PER_FILE);
     for (const importer of hits) {
@@ -15850,11 +16149,14 @@ function collectCandidates(root, base, head, files) {
       const src = tryGit(root, "show", `${head}:${importer}`);
       if (src === null) continue;
       for (const imp of parseImports(src)) {
-        if (resolveSpec(imp.spec, importer, resolveTree, aliases) === f.path) add(importer, f.path, imp.symbols);
+        if (resolveSpec(imp.spec, importer, resolveTree, aliases) === f.path)
+          add(importer, f.path, imp.symbols);
       }
     }
   }
-  return [...seen.values()].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
+  return [...seen.values()].sort(
+    (a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to)
+  );
 }
 
 // src/cli/collect.ts
@@ -15872,7 +16174,11 @@ function parseChanges(nameStatusZ, numstatZ) {
     }
     if (file === void 0) continue;
     const binary = a === "-";
-    stats.set(file, { additions: binary ? 0 : Number(a), deletions: binary ? 0 : Number(d), binary });
+    stats.set(file, {
+      additions: binary ? 0 : Number(a),
+      deletions: binary ? 0 : Number(d),
+      binary
+    });
   }
   const out = [];
   const parts = nameStatusZ.split("\0");
@@ -15883,10 +16189,17 @@ function parseChanges(nameStatusZ, numstatZ) {
     const first = parts[i++];
     const second = kind === "R" || kind === "C" ? parts[i++] : void 0;
     const filePath = second ?? first;
-    const stat = stats.get(filePath) ?? { additions: 0, deletions: 0, binary: false };
-    if (kind === "R") out.push({ path: filePath, oldPath: first, status: "renamed", ...stat });
-    else if (kind === "A" || kind === "C") out.push({ path: filePath, status: "added", ...stat });
-    else if (kind === "D") out.push({ path: filePath, status: "deleted", ...stat });
+    const stat = stats.get(filePath) ?? {
+      additions: 0,
+      deletions: 0,
+      binary: false
+    };
+    if (kind === "R")
+      out.push({ path: filePath, oldPath: first, status: "renamed", ...stat });
+    else if (kind === "A" || kind === "C")
+      out.push({ path: filePath, status: "added", ...stat });
+    else if (kind === "D")
+      out.push({ path: filePath, status: "deleted", ...stat });
     else out.push({ path: filePath, status: "modified", ...stat });
   }
   return out;
@@ -15895,26 +16208,50 @@ function ghPr(root, repo, number) {
   try {
     const selector = number ? String(number) : tryGit(root, "symbolic-ref", "--quiet", "--short", "HEAD")?.trim();
     if (!selector) return null;
-    const args = ["pr", "view", selector, "--repo", repo, "--json", "number,title,url,baseRefName,headRefName,headRefOid"];
+    const args = [
+      "pr",
+      "view",
+      selector,
+      "--repo",
+      repo,
+      "--json",
+      "number,title,url,baseRefName,headRefName,headRefOid"
+    ];
     return JSON.parse(run("gh", args, root));
   } catch (err) {
     if (number) {
-      throw new CliError(`${repo} PR #${number} \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. gh \uC124\uCE58\xB7\uC778\uC99D\uACFC \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
-${err.stderr ?? ""}`.trim());
+      throw new CliError(
+        `${repo} PR #${number} \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. gh \uC124\uCE58\xB7\uC778\uC99D\uACFC \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
+${err.stderr ?? ""}`.trim()
+      );
     }
     return null;
   }
 }
 function defaultBranch(root) {
-  const ref = tryGit(root, "symbolic-ref", "--short", "refs/remotes/origin/HEAD");
+  const ref = tryGit(
+    root,
+    "symbolic-ref",
+    "--short",
+    "refs/remotes/origin/HEAD"
+  );
   if (ref) return ref.trim().replace(/^origin\//, "");
   for (const name of ["main", "master"]) {
-    if (tryGit(root, "rev-parse", "--verify", "--quiet", name) !== null) return name;
+    if (tryGit(root, "rev-parse", "--verify", "--quiet", name) !== null)
+      return name;
   }
-  throw new CliError("\uAE30\uBCF8 \uBE0C\uB79C\uCE58\uB97C \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. --base <ref>\uB85C \uBE44\uAD50 \uB300\uC0C1\uC744 \uC9C0\uC815\uD558\uC138\uC694.");
+  throw new CliError(
+    "\uAE30\uBCF8 \uBE0C\uB79C\uCE58\uB97C \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. --base <ref>\uB85C \uBE44\uAD50 \uB300\uC0C1\uC744 \uC9C0\uC815\uD558\uC138\uC694."
+  );
 }
 function resolveCommit(root, ref) {
-  return tryGit(root, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`)?.trim() ?? null;
+  return tryGit(
+    root,
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${ref}^{commit}`
+  )?.trim() ?? null;
 }
 function excludeOutput(root) {
   const rel = git(root, "rev-parse", "--git-path", "info/exclude").trim();
@@ -15922,8 +16259,11 @@ function excludeOutput(root) {
   const current = (0, import_node_fs4.existsSync)(file) ? (0, import_node_fs4.readFileSync)(file, "utf8") : "";
   if (current.split("\n").includes(".pr-map/")) return;
   (0, import_node_fs4.mkdirSync)(import_node_path5.default.dirname(file), { recursive: true });
-  (0, import_node_fs4.appendFileSync)(file, `${current && !current.endsWith("\n") ? "\n" : ""}.pr-map/
-`);
+  (0, import_node_fs4.appendFileSync)(
+    file,
+    `${current && !current.endsWith("\n") ? "\n" : ""}.pr-map/
+`
+  );
 }
 function collect(cwd, opts) {
   const root = repoRoot(cwd);
@@ -15932,18 +16272,33 @@ function collect(cwd, opts) {
   const baseRef = opts.base ?? gh?.baseRefName ?? defaultBranch(root);
   if (gh) {
     if (!resolveCommit(root, gh.headRefOid)) {
-      if (tryGit(root, "fetch", "--quiet", "origin", `refs/pull/${gh.number}/head`) === null) {
-        throw new CliError(`PR #${gh.number}\uC758 head \uCEE4\uBC0B\uC744 \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.`);
+      if (tryGit(
+        root,
+        "fetch",
+        "--quiet",
+        "origin",
+        `refs/pull/${gh.number}/head`
+      ) === null) {
+        throw new CliError(
+          `PR #${gh.number}\uC758 head \uCEE4\uBC0B\uC744 \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.`
+        );
       }
     }
     tryGit(root, "fetch", "--quiet", "origin", baseRef);
   }
   const head = gh?.headRefOid ?? resolveCommit(root, "HEAD");
-  if (!head || !resolveCommit(root, head)) throw new CliError("head \uCEE4\uBC0B\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
+  if (!head || !resolveCommit(root, head))
+    throw new CliError("head \uCEE4\uBC0B\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
   const baseTip = resolveCommit(root, `origin/${baseRef}`) ?? resolveCommit(root, baseRef);
-  if (!baseTip) throw new CliError(`\uBE44\uAD50 \uB300\uC0C1 ${baseRef}\uC744(\uB97C) \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. git fetch \uD6C4 \uB2E4\uC2DC \uC2E4\uD589\uD558\uC138\uC694.`);
+  if (!baseTip)
+    throw new CliError(
+      `\uBE44\uAD50 \uB300\uC0C1 ${baseRef}\uC744(\uB97C) \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. git fetch \uD6C4 \uB2E4\uC2DC \uC2E4\uD589\uD558\uC138\uC694.`
+    );
   const mergeBase = tryGit(root, "merge-base", baseTip, head)?.trim();
-  if (!mergeBase) throw new CliError(`${baseRef}\uC640 head\uC758 \uACF5\uD1B5 \uCEE4\uBC0B\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC595\uC740 \uD074\uB860\uC774\uBA74 git fetch --unshallow\uB97C \uC2E4\uD589\uD558\uC138\uC694.`);
+  if (!mergeBase)
+    throw new CliError(
+      `${baseRef}\uC640 head\uC758 \uACF5\uD1B5 \uCEE4\uBC0B\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC595\uC740 \uD074\uB860\uC774\uBA74 git fetch --unshallow\uB97C \uC2E4\uD589\uD558\uC138\uC694.`
+    );
   const changes = parseChanges(
     git(root, "diff", "-M", "--name-status", "-z", mergeBase, head),
     git(root, "diff", "-M", "--numstat", "-z", mergeBase, head)
@@ -16004,22 +16359,33 @@ function ghState(root) {
   }
 }
 function actionState(root) {
-  const out = tryGit(root, "ls-remote", "--tags", `https://github.com/${ACTION_REPO}.git`, `refs/tags/${ACTION_TAG}`);
+  const out = tryGit(
+    root,
+    "ls-remote",
+    "--tags",
+    `https://github.com/${ACTION_REPO}.git`,
+    `refs/tags/${ACTION_TAG}`
+  );
   if (out === null) return "unknown";
   return out.trim() ? "published" : "missing";
 }
 function defaultBranch2(root) {
   const out = tryGit(root, "ls-remote", "--symref", "origin", "HEAD");
   const branch = out && /^ref: refs\/heads\/(\S+)\s+HEAD$/m.exec(out)?.[1];
-  if (!branch) throw new CliError("origin\uC758 \uAE30\uBCF8 \uBE0C\uB79C\uCE58\uB97C \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uC811\uADFC \uAD8C\uD55C\uACFC \uCCAB \uCEE4\uBC0B \uC5EC\uBD80\uB97C \uD655\uC778\uD558\uC138\uC694.");
+  if (!branch)
+    throw new CliError(
+      "origin\uC758 \uAE30\uBCF8 \uBE0C\uB79C\uCE58\uB97C \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uC811\uADFC \uAD8C\uD55C\uACFC \uCCAB \uCEE4\uBC0B \uC5EC\uBD80\uB97C \uD655\uC778\uD558\uC138\uC694."
+    );
   return branch;
 }
 function fetchBranch(root, branch) {
   try {
     git(root, "fetch", "-q", "--no-tags", "origin", `refs/heads/${branch}`);
   } catch (err) {
-    throw new CliError(`origin/${branch}\uC744(\uB97C) \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
-${stderrOf(err)}`.trim());
+    throw new CliError(
+      `origin/${branch}\uC744(\uB97C) \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
+${stderrOf(err)}`.trim()
+    );
   }
   return git(root, "rev-parse", "FETCH_HEAD").trim();
 }
@@ -16034,7 +16400,11 @@ function workflowState(root, commit) {
 function secretState(root, repo, gh) {
   if (gh !== "ready") return "unknown";
   try {
-    const names = run("gh", ["secret", "list", "--repo", repo, "--json", "name", "--jq", ".[].name"], root);
+    const names = run(
+      "gh",
+      ["secret", "list", "--repo", repo, "--json", "name", "--jq", ".[].name"],
+      root
+    );
     return names.split("\n").includes(SECRET_NAME) ? "registered" : "missing";
   } catch {
     return "unknown";
@@ -16049,7 +16419,8 @@ function compareUrl(repo, base) {
 function actionProblem(state) {
   if (state === "published") return null;
   const action = `${ACTION_REPO}@${ACTION_TAG}`;
-  if (state === "missing") return `${action} \uD0DC\uADF8\uAC00 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4. \uC9C0\uAE08 \uC124\uCE58\uD558\uBA74 PR\uB9C8\uB2E4 \uC6CC\uD06C\uD50C\uB85C\uAC00 \uC2E4\uD328\uD569\uB2C8\uB2E4.`;
+  if (state === "missing")
+    return `${action} \uD0DC\uADF8\uAC00 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4. \uC9C0\uAE08 \uC124\uCE58\uD558\uBA74 PR\uB9C8\uB2E4 \uC6CC\uD06C\uD50C\uB85C\uAC00 \uC2E4\uD328\uD569\uB2C8\uB2E4.`;
   return `${action}\uC744(\uB97C) \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C\uAC00 \uBE44\uACF5\uAC1C\uC774\uAC70\uB098 \uB124\uD2B8\uC6CC\uD06C \uBB38\uC81C\uC77C \uC218 \uC788\uC2B5\uB2C8\uB2E4.`;
 }
 function showStatus(root) {
@@ -16063,7 +16434,11 @@ function showStatus(root) {
   const labels = {
     action: { published: "\uAC8C\uC2DC\uB428", missing: "\uD0DC\uADF8 \uC5C6\uC74C", unknown: "\uD655\uC778 \uBD88\uAC00" },
     workflow: { current: "\uC124\uCE58\uB428", different: "\uB0B4\uC6A9\uC774 \uB2E4\uB984", missing: "\uC5C6\uC74C" },
-    gh: { ready: "\uC0AC\uC6A9 \uAC00\uB2A5", unauthenticated: "\uB85C\uADF8\uC778 \uD544\uC694", missing: "\uC124\uCE58 \uC548 \uB428" },
+    gh: {
+      ready: "\uC0AC\uC6A9 \uAC00\uB2A5",
+      unauthenticated: "\uB85C\uADF8\uC778 \uD544\uC694",
+      missing: "\uC124\uCE58 \uC548 \uB428"
+    },
     secret: { registered: "\uB4F1\uB85D\uB428", missing: "\uC5C6\uC74C", unknown: "\uD655\uC778 \uBD88\uAC00" }
   };
   console.log(`\uC800\uC7A5\uC18C: ${repo} (\uAE30\uBCF8 \uBE0C\uB79C\uCE58 ${base})`);
@@ -16075,15 +16450,25 @@ function showStatus(root) {
   const steps = [];
   const problem = actionProblem(action);
   if (problem) steps.push(`\uC124\uCE58 \uBD88\uAC00: ${problem}`);
-  else if (workflow === "missing") steps.push("\uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 PR \uB9CC\uB4E4\uAE30: setup --install");
-  else if (workflow === "different") steps.push("\uAE30\uC874 \uC6CC\uD06C\uD50C\uB85C\uB97C \uB36E\uC5B4\uC4F8\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD655\uC778: setup --install --force");
+  else if (workflow === "missing")
+    steps.push("\uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 PR \uB9CC\uB4E4\uAE30: setup --install");
+  else if (workflow === "different")
+    steps.push(
+      "\uAE30\uC874 \uC6CC\uD06C\uD50C\uB85C\uB97C \uB36E\uC5B4\uC4F8\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD655\uC778: setup --install --force"
+    );
   if (secret !== "registered") {
-    if (gh === "ready" && hasEnvKey) steps.push("\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uB3D9\uC758 \uD544\uC694): setup --secret-from-env");
-    else if (gh === "ready") steps.push(`\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uD130\uBBF8\uB110\uC5D0\uC11C): gh secret set ${SECRET_NAME} --repo ${repo}`);
+    if (gh === "ready" && hasEnvKey)
+      steps.push("\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uB3D9\uC758 \uD544\uC694): setup --secret-from-env");
+    else if (gh === "ready")
+      steps.push(
+        `\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uD130\uBBF8\uB110\uC5D0\uC11C): gh secret set ${SECRET_NAME} --repo ${repo}`
+      );
     else steps.push(`\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC6F9): ${secretUrl(repo)}`);
   }
-  console.log(steps.length ? `\uB2E4\uC74C \uB2E8\uACC4:
-${steps.map((s) => `- ${s}`).join("\n")}` : "\uC124\uCE58\uAC00 \uB05D\uB0AC\uC2B5\uB2C8\uB2E4.");
+  console.log(
+    steps.length ? `\uB2E4\uC74C \uB2E8\uACC4:
+${steps.map((s) => `- ${s}`).join("\n")}` : "\uC124\uCE58\uAC00 \uB05D\uB0AC\uC2B5\uB2C8\uB2E4."
+  );
 }
 function pushWorkflowBranch(root, commit) {
   const dir = (0, import_node_fs5.mkdtempSync)(import_node_path6.default.join((0, import_node_os.tmpdir)(), "pr-map-setup-"));
@@ -16093,11 +16478,27 @@ function pushWorkflowBranch(root, commit) {
     (0, import_node_fs5.mkdirSync)(import_node_path6.default.dirname(file), { recursive: true });
     (0, import_node_fs5.writeFileSync)(file, workflowTemplate());
     git(dir, "add", WORKFLOW_PATH);
-    git(dir, "commit", "-q", "--no-verify", "-m", "PR Map \uC790\uB3D9 \uC2E4\uD589 \uC6CC\uD06C\uD50C\uB85C \uCD94\uAC00");
-    git(dir, "push", "-q", "--no-verify", "origin", `HEAD:refs/heads/${SETUP_BRANCH}`);
+    git(
+      dir,
+      "commit",
+      "-q",
+      "--no-verify",
+      "-m",
+      "PR Map \uC790\uB3D9 \uC2E4\uD589 \uC6CC\uD06C\uD50C\uB85C \uCD94\uAC00"
+    );
+    git(
+      dir,
+      "push",
+      "-q",
+      "--no-verify",
+      "origin",
+      `HEAD:refs/heads/${SETUP_BRANCH}`
+    );
   } catch (err) {
-    throw new CliError(`\uC124\uCE58 \uBE0C\uB79C\uCE58\uB97C \uC62C\uB9AC\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
-${stderrOf(err)}`.trim());
+    throw new CliError(
+      `\uC124\uCE58 \uBE0C\uB79C\uCE58\uB97C \uC62C\uB9AC\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
+${stderrOf(err)}`.trim()
+    );
   } finally {
     tryGit(root, "worktree", "remove", "--force", dir);
     (0, import_node_fs5.rmSync)(dir, { recursive: true, force: true });
@@ -16110,7 +16511,24 @@ function openInstallPr(root, repo, base) {
     return;
   }
   try {
-    const existing = run("gh", ["pr", "list", "--repo", repo, "--head", SETUP_BRANCH, "--state", "open", "--json", "url", "--jq", '.[0].url // ""'], root).trim();
+    const existing = run(
+      "gh",
+      [
+        "pr",
+        "list",
+        "--repo",
+        repo,
+        "--head",
+        SETUP_BRANCH,
+        "--state",
+        "open",
+        "--json",
+        "url",
+        "--jq",
+        '.[0].url // ""'
+      ],
+      root
+    ).trim();
     if (existing) {
       console.log(`\uC124\uCE58 PR\uC774 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4: ${existing}`);
       return;
@@ -16153,13 +16571,24 @@ function install(root, force) {
     return 0;
   }
   if (workflow === "different" && !force) {
-    throw new CliError(`${WORKFLOW_PATH}\uC774 \uC774\uBBF8 \uC788\uACE0 \uB0B4\uC6A9\uC774 \uB2E4\uB985\uB2C8\uB2E4. \uB36E\uC5B4\uC4F0\uB824\uBA74 --force\uB97C \uC4F0\uC138\uC694.`);
+    throw new CliError(
+      `${WORKFLOW_PATH}\uC774 \uC774\uBBF8 \uC788\uACE0 \uB0B4\uC6A9\uC774 \uB2E4\uB985\uB2C8\uB2E4. \uB36E\uC5B4\uC4F0\uB824\uBA74 --force\uB97C \uC4F0\uC138\uC694.`
+    );
   }
-  const branchExists = !!tryGit(root, "ls-remote", "--heads", "origin", `refs/heads/${SETUP_BRANCH}`)?.trim();
+  const branchExists = !!tryGit(
+    root,
+    "ls-remote",
+    "--heads",
+    "origin",
+    `refs/heads/${SETUP_BRANCH}`
+  )?.trim();
   if (branchExists && force) {
-    throw new CliError(`\uC6D0\uACA9\uC5D0 ${SETUP_BRANCH} \uBE0C\uB79C\uCE58\uAC00 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4. \uB0B4\uC6A9\uC744 \uD655\uC778\uD574 \uC9C0\uC6B4 \uB4A4 \uB2E4\uC2DC \uC2E4\uD589\uD558\uC138\uC694.`);
+    throw new CliError(
+      `\uC6D0\uACA9\uC5D0 ${SETUP_BRANCH} \uBE0C\uB79C\uCE58\uAC00 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4. \uB0B4\uC6A9\uC744 \uD655\uC778\uD574 \uC9C0\uC6B4 \uB4A4 \uB2E4\uC2DC \uC2E4\uD589\uD558\uC138\uC694.`
+    );
   }
-  if (branchExists) console.log(`\uC6D0\uACA9\uC758 ${SETUP_BRANCH} \uBE0C\uB79C\uCE58\uB97C \uADF8\uB300\uB85C \uC0AC\uC6A9\uD569\uB2C8\uB2E4.`);
+  if (branchExists)
+    console.log(`\uC6D0\uACA9\uC758 ${SETUP_BRANCH} \uBE0C\uB79C\uCE58\uB97C \uADF8\uB300\uB85C \uC0AC\uC6A9\uD569\uB2C8\uB2E4.`);
   else pushWorkflowBranch(root, commit);
   openInstallPr(root, repo, base);
   return 0;
@@ -16168,26 +16597,37 @@ function registerSecretFromEnv(root) {
   const repo = originRepo(root);
   const gh = ghState(root);
   if (gh !== "ready") {
-    throw new CliError(`gh\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4(${gh === "missing" ? "\uC124\uCE58 \uC548 \uB428" : "\uB85C\uADF8\uC778 \uD544\uC694"}). \uC6F9\uC5D0\uC11C \uB4F1\uB85D\uD558\uC138\uC694: ${secretUrl(repo)}`);
+    throw new CliError(
+      `gh\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4(${gh === "missing" ? "\uC124\uCE58 \uC548 \uB428" : "\uB85C\uADF8\uC778 \uD544\uC694"}). \uC6F9\uC5D0\uC11C \uB4F1\uB85D\uD558\uC138\uC694: ${secretUrl(repo)}`
+    );
   }
   const key = process.env[SECRET_NAME]?.trim();
-  if (!key) throw new CliError(`\uD658\uACBD\uBCC0\uC218 ${SECRET_NAME}\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD130\uBBF8\uB110\uC5D0\uC11C \uC9C1\uC811 \uB4F1\uB85D\uD558\uC138\uC694: gh secret set ${SECRET_NAME} --repo ${repo}`);
+  if (!key)
+    throw new CliError(
+      `\uD658\uACBD\uBCC0\uC218 ${SECRET_NAME}\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD130\uBBF8\uB110\uC5D0\uC11C \uC9C1\uC811 \uB4F1\uB85D\uD558\uC138\uC694: gh secret set ${SECRET_NAME} --repo ${repo}`
+    );
   try {
     run("gh", ["secret", "set", SECRET_NAME, "--repo", repo], root, key);
   } catch (err) {
-    throw new CliError(`\uC2DC\uD06C\uB9BF\uC744 \uB4F1\uB85D\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
-${stderrOf(err)}`.trim());
+    throw new CliError(
+      `\uC2DC\uD06C\uB9BF\uC744 \uB4F1\uB85D\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
+${stderrOf(err)}`.trim()
+    );
   }
   if (secretState(root, repo, gh) !== "registered") {
-    throw new CliError(`\uB4F1\uB85D \uD6C4 ${SECRET_NAME}\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uC124\uC815\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694: https://github.com/${repo}/settings/secrets/actions`);
+    throw new CliError(
+      `\uB4F1\uB85D \uD6C4 ${SECRET_NAME}\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uC124\uC815\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694: https://github.com/${repo}/settings/secrets/actions`
+    );
   }
   console.log(`\uC2DC\uD06C\uB9BF ${SECRET_NAME} \uB4F1\uB85D \uC644\uB8CC: ${repo}`);
   return 0;
 }
 function cmdSetup(root, opts) {
   process.env.GIT_TERMINAL_PROMPT = "0";
-  if (opts.install && opts.secretFromEnv) throw new CliError("--install\uACFC --secret-from-env\uB294 \uB530\uB85C \uC2E4\uD589\uD558\uC138\uC694.");
-  if (opts.force && !opts.install) throw new CliError("--force\uB294 --install\uACFC \uD568\uAED8 \uC4F0\uC138\uC694.");
+  if (opts.install && opts.secretFromEnv)
+    throw new CliError("--install\uACFC --secret-from-env\uB294 \uB530\uB85C \uC2E4\uD589\uD558\uC138\uC694.");
+  if (opts.force && !opts.install)
+    throw new CliError("--force\uB294 --install\uACFC \uD568\uAED8 \uC4F0\uC138\uC694.");
   if (opts.install) return install(root, opts.force);
   if (opts.secretFromEnv) return registerSecretFromEnv(root);
   showStatus(root);
@@ -16198,11 +16638,17 @@ function cmdSetup(root, opts) {
 var MAX_ATTEMPTS = 3;
 function requireInput(root) {
   const input = readJsonIfExists(inputPath(root));
-  if (!input) throw new CliError(".pr-map/input.json\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 collect\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
+  if (!input)
+    throw new CliError(
+      ".pr-map/input.json\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 collect\uB97C \uC2E4\uD589\uD558\uC138\uC694."
+    );
   return input;
 }
 function codeIndexFor(root, input) {
-  return new CodeIndex(root, input.pr.base, input.pr.head, [...input.files, ...input.unclassified]);
+  return new CodeIndex(root, input.pr.base, input.pr.head, [
+    ...input.files,
+    ...input.unclassified
+  ]);
 }
 function printProblems(problems) {
   for (const p of problems) console.log(`- ${p.path}: ${p.reason}`);
@@ -16210,47 +16656,71 @@ function printProblems(problems) {
 function cmdCollect(root, opts) {
   const input = collect(root, opts);
   const { pr } = input;
-  console.log(`\uBD84\uC11D \uB300\uC0C1: ${pr.repo}${pr.number ? ` #${pr.number}` : ""} (${pr.baseRef} \u2190 ${pr.headRef})`);
+  console.log(
+    `\uBD84\uC11D \uB300\uC0C1: ${pr.repo}${pr.number ? ` #${pr.number}` : ""} (${pr.baseRef} \u2190 ${pr.headRef})`
+  );
   console.log(`base ${pr.base.slice(0, 7)} \xB7 head ${pr.head.slice(0, 7)}`);
-  console.log(`\uC9C0\uB3C4 \uB300\uC0C1 ${input.files.length}\uAC1C \xB7 \uBBF8\uBD84\uB958 ${input.unclassified.length}\uAC1C \xB7 \uAD00\uACC4 \uD6C4\uBCF4 ${input.candidates.length}\uAC1C`);
+  console.log(
+    `\uC9C0\uB3C4 \uB300\uC0C1 ${input.files.length}\uAC1C \xB7 \uBBF8\uBD84\uB958 ${input.unclassified.length}\uAC1C \xB7 \uAD00\uACC4 \uD6C4\uBCF4 ${input.candidates.length}\uAC1C`
+  );
   if (!input.checkout.matchesHead) {
-    console.log(`\uC8FC\uC758: \uCCB4\uD06C\uC544\uC6C3\uC774 head\uC640 \uB2E4\uB985\uB2C8\uB2E4. \uCF54\uB4DC\uB294 \uD30C\uC77C\uC774 \uC544\uB2C8\uB77C git show ${pr.head.slice(0, 7)}:<\uACBD\uB85C>\uB85C \uC77D\uC73C\uC138\uC694.`);
+    console.log(
+      `\uC8FC\uC758: \uCCB4\uD06C\uC544\uC6C3\uC774 head\uC640 \uB2E4\uB985\uB2C8\uB2E4. \uCF54\uB4DC\uB294 \uD30C\uC77C\uC774 \uC544\uB2C8\uB77C git show ${pr.head.slice(0, 7)}:<\uACBD\uB85C>\uB85C \uC77D\uC73C\uC138\uC694.`
+    );
   } else if (input.checkout.dirty) {
-    console.log("\uC8FC\uC758: \uCEE4\uBC0B\uB418\uC9C0 \uC54A\uC740 \uBCC0\uACBD\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uBD84\uC11D\uC5D0\uB294 \uCEE4\uBC0B\uB41C \uB0B4\uC6A9\uB9CC \uC501\uB2C8\uB2E4. \uC904 \uBC88\uD638\uB294 git show\uB85C \uD655\uC778\uD558\uC138\uC694.");
+    console.log(
+      "\uC8FC\uC758: \uCEE4\uBC0B\uB418\uC9C0 \uC54A\uC740 \uBCC0\uACBD\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uBD84\uC11D\uC5D0\uB294 \uCEE4\uBC0B\uB41C \uB0B4\uC6A9\uB9CC \uC501\uB2C8\uB2E4. \uC904 \uBC88\uD638\uB294 git show\uB85C \uD655\uC778\uD558\uC138\uC694."
+    );
   }
 }
 function cmdValidate(root) {
   const input = requireInput(root);
   const file = mapPath(root);
-  if (!(0, import_node_fs6.existsSync)(file)) throw new CliError(".pr-map/pr-map.json\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBD84\uC11D \uACB0\uACFC\uB97C \uBA3C\uC800 \uC791\uC131\uD558\uC138\uC694.");
+  if (!(0, import_node_fs6.existsSync)(file))
+    throw new CliError(
+      ".pr-map/pr-map.json\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBD84\uC11D \uACB0\uACFC\uB97C \uBA3C\uC800 \uC791\uC131\uD558\uC138\uC694."
+    );
   let map;
   try {
     map = JSON.parse((0, import_node_fs6.readFileSync)(file, "utf8"));
   } catch (err) {
-    throw new CliError(`pr-map.json\uC744 JSON\uC73C\uB85C \uC77D\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${err.message}`);
+    throw new CliError(
+      `pr-map.json\uC744 JSON\uC73C\uB85C \uC77D\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${err.message}`
+    );
   }
-  const state = readJsonIfExists(statePath(root)) ?? { head: input.pr.head, attempts: 0, errors: [] };
+  const state = readJsonIfExists(statePath(root)) ?? {
+    head: input.pr.head,
+    attempts: 0,
+    errors: []
+  };
   const fail = (problems2) => {
     writeJson(statePath(root), { ...state, errors: problems2 });
     return 1;
   };
-  if (map && typeof map === "object" && map.pr && typeof map.pr === "object") normalize(map, input);
+  if (map && typeof map === "object" && map.pr && typeof map.pr === "object")
+    normalize(map, input);
   const schemaProblems = checkSchema(map);
   if (schemaProblems.length) {
     state.attempts += 1;
-    console.log(`\uAC80\uC99D \uC2E4\uD328 ${schemaProblems.length}\uAC74 (\uC2DC\uB3C4 ${state.attempts}):`);
+    console.log(
+      `\uAC80\uC99D \uC2E4\uD328 ${schemaProblems.length}\uAC74 (\uC2DC\uB3C4 ${state.attempts}):`
+    );
     printProblems(schemaProblems);
     return fail(schemaProblems);
   }
   const code = codeIndexFor(root, input);
   const remapped = stabilizeIds(map, input.previous);
   remapped.forEach((l) => console.log(`id \uBCF4\uC815: ${l}`));
-  pruneTests(map, input, code).forEach((l) => console.log(`\uD14C\uC2A4\uD2B8 \uC5F0\uACB0 \uC81C\uAC70: ${l}`));
+  pruneTests(map, input, code).forEach(
+    (l) => console.log(`\uD14C\uC2A4\uD2B8 \uC5F0\uACB0 \uC81C\uAC70: ${l}`)
+  );
   let problems = checkRules(map, input, code);
   if (problems.length) {
     state.attempts += 1;
     if (state.attempts < MAX_ATTEMPTS) {
-      console.log(`\uAC80\uC99D \uC2E4\uD328 ${problems.length}\uAC74 (\uC2DC\uB3C4 ${state.attempts}/${MAX_ATTEMPTS}). \uC544\uB798 \uD56D\uBAA9\uB9CC \uACE0\uCE58\uACE0 \uB2E4\uC2DC \uC2E4\uD589\uD558\uC138\uC694:`);
+      console.log(
+        `\uAC80\uC99D \uC2E4\uD328 ${problems.length}\uAC74 (\uC2DC\uB3C4 ${state.attempts}/${MAX_ATTEMPTS}). \uC544\uB798 \uD56D\uBAA9\uB9CC \uACE0\uCE58\uACE0 \uB2E4\uC2DC \uC2E4\uD589\uD558\uC138\uC694:`
+      );
       printProblems(problems);
       return fail(problems);
     }
@@ -16265,14 +16735,20 @@ function cmdValidate(root) {
   }
   writeJson(file, map);
   writeJson(statePath(root), { ...state, errors: [] });
-  const missing = input.files.filter((f) => !map.files.some((m) => m.path === f.path));
-  if (missing.length) console.log(`\uC8FC\uC758: \uC9C0\uB3C4\uC5D0 \uC5C6\uB294 \uBCC0\uACBD \uD30C\uC77C ${missing.length}\uAC1C\uB294 \uBBF8\uBD84\uB958\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4: ${missing.map((f) => f.path).join(", ")}`);
+  const missing = input.files.filter(
+    (f) => !map.files.some((m) => m.path === f.path)
+  );
+  if (missing.length)
+    console.log(
+      `\uC8FC\uC758: \uC9C0\uB3C4\uC5D0 \uC5C6\uB294 \uBCC0\uACBD \uD30C\uC77C ${missing.length}\uAC1C\uB294 \uBBF8\uBD84\uB958\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4: ${missing.map((f) => f.path).join(", ")}`
+    );
   console.log(`\uAC80\uC99D \uD1B5\uACFC \xB7 \uD655\uC778 \uD544\uC694 ${countUnverified(map)}\uAC74`);
   return 0;
 }
 function cmdBuild(root) {
   const input = requireInput(root);
-  if (cmdValidate(root) !== 0) throw new CliError("\uAC80\uC99D\uC744 \uD1B5\uACFC\uD558\uC9C0 \uBABB\uD574 \uBE4C\uB4DC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.");
+  if (cmdValidate(root) !== 0)
+    throw new CliError("\uAC80\uC99D\uC744 \uD1B5\uACFC\uD558\uC9C0 \uBABB\uD574 \uBE4C\uB4DC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.");
   const map = readJson(mapPath(root));
   const data = build(root, map, input, codeIndexFor(root, input));
   console.log(`\uBDF0\uC5B4: ${viewerHtmlPath(root)}`);
@@ -16282,7 +16758,21 @@ function cmdBuild(root) {
 function latestHead(root, input) {
   try {
     if (input.pr.number) {
-      const out = run("gh", ["pr", "view", String(input.pr.number), "--repo", input.pr.repo, "--json", "headRefOid", "--jq", ".headRefOid"], root);
+      const out = run(
+        "gh",
+        [
+          "pr",
+          "view",
+          String(input.pr.number),
+          "--repo",
+          input.pr.repo,
+          "--json",
+          "headRefOid",
+          "--jq",
+          ".headRefOid"
+        ],
+        root
+      );
       return out.trim() || null;
     }
     return tryGit(root, "rev-parse", "HEAD")?.trim() ?? null;
@@ -16294,13 +16784,24 @@ function statusData(root) {
   const input = readJsonIfExists(inputPath(root));
   if (!input) return { status: "empty" };
   const state = readJsonIfExists(statePath(root));
-  if (state?.errors?.length) return { status: "failed", pr: input.pr, errors: state.errors.map(({ path: path7, reason }) => ({ path: path7, reason })) };
+  if (state?.errors?.length)
+    return {
+      status: "failed",
+      pr: input.pr,
+      errors: state.errors.map(({ path: path7, reason }) => ({ path: path7, reason }))
+    };
   return { status: "analyzing", pr: input.pr, changed: input.files.length };
 }
 function openInBrowser(file) {
   const [cmd, args] = process.platform === "darwin" ? ["open", [file]] : process.platform === "win32" ? ["cmd", ["/c", "start", "", file]] : ["xdg-open", [file]];
-  const child = (0, import_node_child_process2.spawn)(cmd, args, { detached: true, stdio: "ignore" });
-  child.on("error", () => console.log("\uBE0C\uB77C\uC6B0\uC800\uB97C \uC5F4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC704 \uACBD\uB85C\uB97C \uC9C1\uC811 \uC5EC\uC138\uC694."));
+  const child = (0, import_node_child_process2.spawn)(cmd, args, {
+    detached: true,
+    stdio: "ignore"
+  });
+  child.on(
+    "error",
+    () => console.log("\uBE0C\uB77C\uC6B0\uC800\uB97C \uC5F4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC704 \uACBD\uB85C\uB97C \uC9C1\uC811 \uC5EC\uC138\uC694.")
+  );
   child.unref();
 }
 function cmdView(root, opts) {
@@ -16310,9 +16811,21 @@ function cmdView(root, opts) {
   let data;
   if (current) {
     const latest = latestHead(root, input);
-    const newer = latest && latest !== ready.pr.head ? tryGit(root, "rev-list", "--count", `${ready.pr.head}..${latest}`)?.trim() : null;
-    data = { ...ready, latestHead: latest, newCommits: newer ? Number(newer) : null };
-    if (latest && latest !== ready.pr.head) console.log(`\uC0C8 \uCEE4\uBC0B\uC774 \uC788\uC2B5\uB2C8\uB2E4: \uBD84\uC11D ${ready.pr.head.slice(0, 7)} \xB7 \uCD5C\uC2E0 ${latest.slice(0, 7)}`);
+    const newer = latest && latest !== ready.pr.head ? tryGit(
+      root,
+      "rev-list",
+      "--count",
+      `${ready.pr.head}..${latest}`
+    )?.trim() : null;
+    data = {
+      ...ready,
+      latestHead: latest,
+      newCommits: newer ? Number(newer) : null
+    };
+    if (latest && latest !== ready.pr.head)
+      console.log(
+        `\uC0C8 \uCEE4\uBC0B\uC774 \uC788\uC2B5\uB2C8\uB2E4: \uBD84\uC11D ${ready.pr.head.slice(0, 7)} \xB7 \uCD5C\uC2E0 ${latest.slice(0, 7)}`
+      );
   } else {
     data = statusData(root);
   }
@@ -16328,27 +16841,59 @@ function cmdPublish(root) {
     return;
   }
   const file = commentPath(root);
-  if (!(0, import_node_fs6.existsSync)(file)) throw new CliError("comment.md\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 build\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
+  if (!(0, import_node_fs6.existsSync)(file))
+    throw new CliError("comment.md\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 build\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
   const body = (0, import_node_fs6.readFileSync)(file, "utf8");
   const { repo, number, head } = input.pr;
   const latest = latestHead(root, input);
-  if (latest && latest !== head) console.log(`\uC8FC\uC758: PR head\uAC00 \uBD84\uC11D \uB4A4 \uBC14\uB00C\uC5C8\uC2B5\uB2C8\uB2E4(\uCD5C\uC2E0 ${latest.slice(0, 7)}). \uBD84\uC11D \uCEE4\uBC0B ${head.slice(0, 7)} \uAE30\uC900\uC73C\uB85C \uAC8C\uC2DC\uD569\uB2C8\uB2E4.`);
+  if (latest && latest !== head)
+    console.log(
+      `\uC8FC\uC758: PR head\uAC00 \uBD84\uC11D \uB4A4 \uBC14\uB00C\uC5C8\uC2B5\uB2C8\uB2E4(\uCD5C\uC2E0 ${latest.slice(0, 7)}). \uBD84\uC11D \uCEE4\uBC0B ${head.slice(0, 7)} \uAE30\uC900\uC73C\uB85C \uAC8C\uC2DC\uD569\uB2C8\uB2E4.`
+    );
   let existing;
   try {
     const jq = `.[] | select(.body | startswith("${COMMENT_MARKER}")) | .id`;
-    existing = run("gh", ["api", `repos/${repo}/issues/${number}/comments`, "--paginate", "--jq", jq], root).split("\n")[0]?.trim();
+    existing = run(
+      "gh",
+      [
+        "api",
+        `repos/${repo}/issues/${number}/comments`,
+        "--paginate",
+        "--jq",
+        jq
+      ],
+      root
+    ).split("\n")[0]?.trim();
   } catch (err) {
-    throw new CliError(`\uAE30\uC874 \uB313\uAE00\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. gh \uC778\uC99D\uACFC \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
-${err.stderr ?? ""}`.trim());
+    throw new CliError(
+      `\uAE30\uC874 \uB313\uAE00\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. gh \uC778\uC99D\uACFC \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
+${err.stderr ?? ""}`.trim()
+    );
   }
   const payload = JSON.stringify({ body });
-  const args = existing ? ["api", "--method", "PATCH", `repos/${repo}/issues/comments/${existing}`, "--input", "-"] : ["api", "--method", "POST", `repos/${repo}/issues/${number}/comments`, "--input", "-"];
+  const args = existing ? [
+    "api",
+    "--method",
+    "PATCH",
+    `repos/${repo}/issues/comments/${existing}`,
+    "--input",
+    "-"
+  ] : [
+    "api",
+    "--method",
+    "POST",
+    `repos/${repo}/issues/${number}/comments`,
+    "--input",
+    "-"
+  ];
   let out;
   try {
     out = run("gh", args, root, payload);
   } catch (err) {
-    throw new CliError(`\uB313\uAE00\uC744 \uAC8C\uC2DC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
-${err.stderr ?? ""}`.trim());
+    throw new CliError(
+      `\uB313\uAE00\uC744 \uAC8C\uC2DC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
+${err.stderr ?? ""}`.trim()
+    );
   }
   const url = JSON.parse(out).html_url ?? "";
   console.log(`${existing ? "\uB313\uAE00 \uAC31\uC2E0" : "\uB313\uAE00 \uAC8C\uC2DC"}: ${url}`);
@@ -16384,7 +16929,8 @@ function main() {
   switch (command) {
     case "collect": {
       const pr = values.pr === void 0 ? void 0 : Number(values.pr);
-      if (pr !== void 0 && (!Number.isInteger(pr) || pr < 1)) throw new CliError("--pr\uC5D0\uB294 PR \uBC88\uD638\uB97C \uC4F0\uC138\uC694.");
+      if (pr !== void 0 && (!Number.isInteger(pr) || pr < 1))
+        throw new CliError("--pr\uC5D0\uB294 PR \uBC88\uD638\uB97C \uC4F0\uC138\uC694.");
       cmdCollect(root, { pr, base: values.base });
       return 0;
     }
@@ -16400,7 +16946,11 @@ function main() {
       cmdView(root, { open: !values["no-open"] });
       return 0;
     case "setup":
-      return cmdSetup(root, { install: !!values.install, force: !!values.force, secretFromEnv: !!values["secret-from-env"] });
+      return cmdSetup(root, {
+        install: !!values.install,
+        force: !!values.force,
+        secretFromEnv: !!values["secret-from-env"]
+      });
     default:
       console.error(USAGE);
       return 1;

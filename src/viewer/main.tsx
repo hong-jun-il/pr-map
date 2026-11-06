@@ -1,7 +1,7 @@
-import { createRoot } from 'react-dom/client';
-import type { ViewerData } from '../shared/types';
-import { App } from './App';
-import './styles.css';
+import { createRoot } from "react-dom/client";
+import type { ViewerData } from "../shared/types";
+import { App } from "./App";
+import "./styles.css";
 
 declare global {
   interface Window {
@@ -9,4 +9,6 @@ declare global {
   }
 }
 
-createRoot(document.getElementById('root')!).render(<App data={window.__PR_MAP__} />);
+createRoot(document.getElementById("root")!).render(
+  <App data={window.__PR_MAP__} />,
+);

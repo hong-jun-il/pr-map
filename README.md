@@ -6,11 +6,11 @@ PR의 변경을 파일별 자연어 동작 트리와 연결 관계로 보여주�
 
 `skill/pr-map` 폴더를 `.claude/skills/pr-map`(저장소) 또는 `~/.claude/skills/pr-map`(개인)에 복사한 뒤, 분석할 저장소에서 실행합니다.
 
-| 명령 | 동작 |
-| --- | --- |
-| `/pr-map`, `/pr-map <번호>` | 분석, 검증, 빌드 후 PR 댓글 게시 |
-| `/pr-map view` | 뷰어 열기. 이때 새 커밋이 있는지 확인 |
-| `/pr-map setup` | 자동 실행 워크플로 설치 PR 생성, 시크릿 등록 안내 |
+| 명령                        | 동작                                              |
+| --------------------------- | ------------------------------------------------- |
+| `/pr-map`, `/pr-map <번호>` | 분석, 검증, 빌드 후 PR 댓글 게시                  |
+| `/pr-map view`              | 뷰어 열기. 이때 새 커밋이 있는지 확인             |
+| `/pr-map setup`             | 자동 실행 워크플로 설치 PR 생성, 시크릿 등록 안내 |
 
 필요한 도구는 Node 20 이상, `git`, `gh`(인증 완료)입니다. 분석은 실행 중인 에이전트의 모델이 하므로 API 키가 필요 없습니다.
 
@@ -22,25 +22,25 @@ PR의 변경을 파일별 자연어 동작 트리와 연결 관계로 보여주�
 
 설치된 워크플로는 같은 저장소에서 연 PR만 분석합니다. 포크 PR, 초안, Dependabot PR과 `no-pr-map` 라벨이 붙은 PR은 건너뜁니다. 자동 실행은 PR 코드를 Anthropic API로 보내고, 사용량은 등록한 API 키에 청구됩니다.
 
-| 입력 | 기본값 | 설명 |
-| --- | --- | --- |
-| `anthropic-api-key` | 필수 | 저장소 시크릿으로 넘기는 API 키 |
-| `github-token` | `github.token` | PR 조회와 댓글 게시용 토큰 |
-| `model` | `sonnet` | 분석 모델 |
-| `max-turns` | `80` | 에이전트의 최대 턴 수 |
-| `max-budget-usd` | `5` | 실행당 비용 상한(추정치 기준) |
-| `claude-code-version` | `2.1.318` | 설치할 Claude Code 버전 |
+| 입력                  | 기본값         | 설명                            |
+| --------------------- | -------------- | ------------------------------- |
+| `anthropic-api-key`   | 필수           | 저장소 시크릿으로 넘기는 API 키 |
+| `github-token`        | `github.token` | PR 조회와 댓글 게시용 토큰      |
+| `model`               | `sonnet`       | 분석 모델                       |
+| `max-turns`           | `80`           | 에이전트의 최대 턴 수           |
+| `max-budget-usd`      | `5`            | 실행당 비용 상한(추정치 기준)   |
+| `claude-code-version` | `2.1.318`      | 설치할 Claude Code 버전         |
 
 PR 코드는 신뢰할 수 없는 입력으로 다룹니다. 분석 단계에는 GitHub 토큰을 넘기지 않고, 네트워크 도구와 저장소의 `.claude` 설정, 훅, MCP를 끕니다. 쓰기는 `.pr-map/`으로 제한합니다. 전체 지도는 실행의 artifact(`pr-map-viewer`)로 14일 동안 보관하고, PR 댓글에 실행 페이지 링크를 넣습니다.
 
 ### 설정: `.pr-map.yml` (선택)
 
 ```yaml
-exclude:        # 지도에서 뺄 경로 (글롭)
+exclude: # 지도에서 뺄 경로 (글롭)
   - docs/**
   - "**/*.gen.ts"
-maxFiles: 50    # 넘으면 변경량이 작은 파일부터 미분류로 표시
-includeTests: true  # 테스트도 지도에 넣기 (기본: 제외)
+maxFiles: 50 # 넘으면 변경량이 작은 파일부터 미분류로 표시
+includeTests: true # 테스트도 지도에 넣기 (기본: 제외)
 ```
 
 테스트 코드, 스토리, 테스트 러너 설정(`playwright`·`vitest`·`jest`·`cypress`)은 기본으로 지도에서 빠지고 미분류 목록에 남습니다.

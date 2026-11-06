@@ -18,7 +18,11 @@
           "type": ["integer", "null"],
           "minimum": 1
         },
-        "base": { "type": "string", "description": "merge-base commit", "pattern": "^[0-9a-f]{7,40}$" },
+        "base": {
+          "type": "string",
+          "description": "merge-base commit",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
         "head": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
         "summary": { "type": "string", "minLength": 1, "maxLength": 200 }
       }
@@ -61,12 +65,19 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "path": { "type": "string", "minLength": 1 },
-        "status": { "enum": ["added", "modified", "deleted", "renamed", "reference"] },
+        "status": {
+          "enum": ["added", "modified", "deleted", "renamed", "reference"]
+        },
         "layer": {
           "description": "역할별 레인. entry: 진입점, core: 핵심 로직, store: 저장소·인프라, ext: 공통·외부",
           "enum": ["entry", "core", "store", "ext"]
         },
-        "role": { "description": "이 파일이 하는 일 한 줄", "type": "string", "minLength": 1, "maxLength": 60 },
+        "role": {
+          "description": "이 파일이 하는 일 한 줄",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
         "oldPath": { "type": "string", "minLength": 1 },
         "replacedBy": { "type": "array", "items": { "$ref": "#/$defs/id" } },
         "tree": { "type": "array", "items": { "$ref": "#/$defs/node" } }
@@ -91,18 +102,27 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "text": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "change": { "enum": ["added", "deleted", "modified", "affected", "unchanged"] },
+        "change": {
+          "enum": ["added", "deleted", "modified", "affected", "unchanged"]
+        },
         "affectedBy": {
           "type": "object",
           "required": ["text", "evidence"],
           "additionalProperties": false,
           "properties": {
             "text": { "type": "string", "minLength": 1, "maxLength": 120 },
-            "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }
+            "evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/evidence" }
+            }
           }
         },
         "unverified": { "const": true },
-        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence" }
+        },
         "tests": {
           "description": "이 분기를 확인하는, 이번 PR에서 바뀐 테스트",
           "type": "array",
@@ -157,7 +177,10 @@
         "from": { "$ref": "#/$defs/id" },
         "to": { "$ref": "#/$defs/id" },
         "label": { "type": "string", "minLength": 1, "maxLength": 40 },
-        "unverified": { "const": true, "description": "코드에서 확인하지 못한 관계(F06)" }
+        "unverified": {
+          "const": true,
+          "description": "코드에서 확인하지 못한 관계(F06)"
+        }
       }
     }
   }

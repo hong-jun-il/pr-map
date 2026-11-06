@@ -16,11 +16,11 @@ inputs:
   max-turns:
     description: 분석 에이전트의 최대 턴 수
     required: false
-    default: '80'
+    default: "80"
   max-budget-usd:
     description: 실행 한 번의 비용 상한(USD). 추정치라 실제 청구액과 다를 수 있습니다.
     required: false
-    default: '5'
+    default: "5"
   claude-code-version:
     description: 설치할 Claude Code 버전
     required: false
@@ -42,14 +42,14 @@ runs:
 
     - uses: actions/setup-node@v4
       with:
-        node-version: '22'
+        node-version: "22"
 
     - id: collect
       name: 변경 내용 수집
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
-        GIT_TERMINAL_PROMPT: '0'
+        GIT_TERMINAL_PROMPT: "0"
         PR_NUMBER: ${{ github.event.pull_request.number }}
       run: bash "$GITHUB_ACTION_PATH/action/collect.sh"
 

@@ -1,6 +1,8 @@
-export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed' | 'reference';
-export type NodeChange = 'added' | 'deleted' | 'modified' | 'affected' | 'unchanged';
-export type Side = 'base' | 'head';
+export type FileStatus =
+  "added" | "modified" | "deleted" | "renamed" | "reference";
+export type NodeChange =
+  "added" | "deleted" | "modified" | "affected" | "unchanged";
+export type Side = "base" | "head";
 
 export interface Evidence {
   side: Side;
@@ -29,7 +31,7 @@ export interface TreeNode {
   children?: TreeNode[];
 }
 
-export type FileLayer = 'entry' | 'core' | 'store' | 'ext';
+export type FileLayer = "entry" | "core" | "store" | "ext";
 
 export interface MapFile {
   id: string;
@@ -51,7 +53,7 @@ export interface MapEdge {
 
 export interface ViewerEdge extends MapEdge {
   /** replacedBy는 files[].replacedBy에서 빌드할 때 만든다. */
-  kind: 'calls' | 'replacedBy';
+  kind: "calls" | "replacedBy";
 }
 
 export interface ReadingStep {
@@ -61,7 +63,13 @@ export interface ReadingStep {
 
 export interface PrMap {
   version: 2;
-  pr: { repo: string; number: number | null; base: string; head: string; summary: string };
+  pr: {
+    repo: string;
+    number: number | null;
+    base: string;
+    head: string;
+    summary: string;
+  };
   readingOrder: ReadingStep[];
   files: MapFile[];
   edges: MapEdge[];
@@ -70,14 +78,15 @@ export interface PrMap {
 export interface ChangedFile {
   path: string;
   oldPath?: string;
-  status: Exclude<FileStatus, 'reference'>;
+  status: Exclude<FileStatus, "reference">;
   additions: number;
   deletions: number;
   binary: boolean;
 }
 
 /** attention은 분석했어야 하는데 못 한 파일이라 리뷰어가 직접 봐야 한다. */
-export type UnclassifiedCategory = 'attention' | 'test' | 'fixture' | 'doc' | 'generated' | 'excluded' | 'other';
+export type UnclassifiedCategory =
+  "attention" | "test" | "fixture" | "doc" | "generated" | "excluded" | "other";
 
 export interface UnclassifiedFile extends ChangedFile {
   reason: string;
@@ -123,7 +132,7 @@ export interface CodeRow {
   n: number;
 }
 
-export type CodeError = 'not-found' | 'too-large' | 'binary';
+export type CodeError = "not-found" | "too-large" | "binary";
 export type CodeEntry = { rows: CodeRow[] } | { error: CodeError };
 
 export interface ViewerFile extends MapFile {
@@ -137,9 +146,14 @@ export interface ViewerFile extends MapFile {
 }
 
 export interface ViewerMapData {
-  status: 'ready';
+  status: "ready";
   pr: PrInfo & { summary: string };
-  counts: { changed: number; mapped: number; unclassified: number; unverified: number };
+  counts: {
+    changed: number;
+    mapped: number;
+    unclassified: number;
+    unverified: number;
+  };
   readingOrder: ReadingStep[];
   files: ViewerFile[];
   edges: ViewerEdge[];
@@ -154,6 +168,10 @@ export interface ViewerMapData {
 
 export type ViewerData =
   | ViewerMapData
-  | { status: 'empty' }
-  | { status: 'analyzing'; pr: PrInfo; changed: number }
-  | { status: 'failed'; pr: PrInfo; errors: { path: string; reason: string }[] };
+  | { status: "empty" }
+  | { status: "analyzing"; pr: PrInfo; changed: number }
+  | {
+      status: "failed";
+      pr: PrInfo;
+      errors: { path: string; reason: string }[];
+    };
