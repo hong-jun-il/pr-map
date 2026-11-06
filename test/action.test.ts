@@ -1,5 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
@@ -241,7 +247,9 @@ describe("액션 단계 실행", () => {
     // 환경변수 정리를 켜면 CLI가 권한 모드를 default로 강제하므로 넘기지 않는다.
     expect(call.args).not.toContain("--permission-mode");
     expect(value("--tools")).toBe("Read,Grep,Glob,Edit,Write,Bash");
-    expect(call.args).toContain("Edit(.pr-map/**)");
+    // 에이전트가 cd해도 결과 파일을 쓸 수 있게 절대 경로 규칙을 쓴다.
+    expect(call.args).toContain(`Edit(/${realpathSync(fx.root)}/.pr-map/**)`);
+    expect(call.args).not.toContain("Edit(.pr-map/**)");
     expect(call.args).toContain(
       `Bash(node ${ACTION_ROOT}/skill/pr-map/scripts/pr-map.js validate)`,
     );
