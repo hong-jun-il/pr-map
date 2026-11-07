@@ -8,25 +8,13 @@ PR의 변경을 파일별 동작 트리로 그리고, 모든 설명을 실제 �
 
 Node 20 이상, `git`, 로그인된 `gh`가 필요합니다.
 
-1. 저장소를 내려받습니다.
+```bash
+npx skills add hong-jun-il/pr-map -g
+```
 
-   ```bash
-   git clone --depth 1 --branch v1 https://github.com/hong-jun-il/pr-map.git /tmp/pr-map
-   ```
+`-g`는 모든 저장소에서 쓰도록 개인 폴더에 설치합니다. 한 저장소에서만 쓰려면 그 저장소에서 `-g` 없이 실행합니다.
 
-2. 스킬 폴더를 복사합니다. 한 저장소에서만 쓰려면 `~/.claude/skills` 대신 그 저장소의 `.claude/skills`에 복사합니다.
-
-   ```bash
-   mkdir -p ~/.claude/skills && cp -R /tmp/pr-map/skill/pr-map ~/.claude/skills/pr-map
-   ```
-
-3. 내려받은 폴더를 지웁니다.
-
-   ```bash
-   rm -rf /tmp/pr-map
-   ```
-
-4. 분석할 저장소에서 에이전트를 열고 `/pr-map`을 실행합니다. 분석은 실행 중인 에이전트의 모델이 하므로 API 키가 필요 없습니다.
+설치한 뒤 분석할 저장소에서 에이전트를 열고 `/pr-map`을 실행합니다. 분석은 실행 중인 에이전트의 모델이 하므로 API 키가 필요 없습니다.
 
 ## 자동 실행 설정
 
