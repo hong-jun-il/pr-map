@@ -71,7 +71,7 @@ export function rerunCommand(pr: { number: number | null }): string {
 export const keepsAcrossTabs = (protocol: string) => protocol === "file:";
 
 export function draftsText(drafts: { where: string; text: string }[]): string {
-  return drafts.map((d) => `${d.where}: ${d.text}`).join("\n\n");
+  return drafts.map((d) => `- ${d.where}: ${d.text}`).join("\n");
 }
 
 export function storageKey(
