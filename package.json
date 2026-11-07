@@ -2,6 +2,7 @@
   "name": "pr-map",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "PR 변경을 파일별 동작 트리와 코드 근거 지도로 보여주는 스킬",
   "scripts": {
