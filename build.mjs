@@ -15,6 +15,11 @@ await build({
   format: "cjs",
   outfile: `${skill}/scripts/pr-map.js`,
   banner: { js: "#!/usr/bin/env node" },
+  define: {
+    __PR_MAP_VERSION__: JSON.stringify(
+      JSON.parse(readFileSync("package.json", "utf8")).version,
+    ),
+  },
   logLevel: "warning",
 });
 // 설치된 저장소가 "type": "module"이어도 CommonJS 번들로 읽히게 한다.

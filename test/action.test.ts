@@ -1,5 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
@@ -43,14 +49,14 @@ describe("action.yml 권한 경계", () => {
 
   it("PR 코드를 읽는 분석 단계에는 GitHub 토큰을 넘기지 않는다", () => {
     const env = Object.keys(step("analyze").env!);
-    expect(env).toContain("ANTHROPIC_API_KEY");
+    expect(env).toContain("PR_MAP_API_KEY");
     expect(env.filter((k) => /GH_|GITHUB|TOKEN/.test(k))).toEqual([]);
     expect(JSON.stringify(step("analyze").env)).not.toContain("github-token");
   });
 
   it("API 키는 키 확인과 분석 단계에만 넘긴다", () => {
     const holders = steps
-      .filter((s) => JSON.stringify(s.env ?? {}).includes("anthropic-api-key"))
+      .filter((s) => JSON.stringify(s.env ?? {}).includes("api-key"))
       .map((s) => s.id);
     expect(holders).toEqual(["check-key", "analyze"]);
   });
@@ -60,9 +66,22 @@ describe("action.yml 권한 경계", () => {
   });
 
   it("분석할 파일이 없으면 수집 뒤 단계를 건너뛴다", () => {
-    const ids = ["install-claude", "analyze", "build", "publish"];
+    const ids = ["install-agent", "analyze", "build", "publish"];
     for (const id of ids)
       expect(step(id).if).toBe("steps.collect.outputs.skip != 'true'");
+  });
+
+  it("워크플로 템플릿은 라벨 변경만으로 분석을 다시 돌리지 않는다", () => {
+    const workflow = parse(
+      readFileSync("skill/pr-map/assets/pr-map.yml", "utf8"),
+    );
+    expect(workflow.on.pull_request.types).toEqual([
+      "opened",
+      "synchronize",
+      "reopened",
+      "ready_for_review",
+    ]);
+    expect(workflow.jobs["pr-map"].if).toContain("'no-pr-map'");
   });
 
   it("워크플로 템플릿은 토큰을 체크아웃에 남기지 않고 PR 커밋을 받는다", () => {
@@ -109,7 +128,8 @@ describe("액션 단계 실행", () => {
         FAKE_CLAUDE_LOG: claudeLog,
         FAKE_SAMPLE: SAMPLE,
         PR_NUMBER: "482",
-        ANTHROPIC_API_KEY: "sk-ant-test",
+        PR_MAP_PROVIDER: "claude",
+        PR_MAP_API_KEY: "sk-ant-test",
         PR_MAP_MODEL: "sonnet",
         PR_MAP_MAX_TURNS: "80",
         PR_MAP_MAX_BUDGET_USD: "5",
@@ -235,7 +255,9 @@ describe("액션 단계 실행", () => {
     // 환경변수 정리를 켜면 CLI가 권한 모드를 default로 강제하므로 넘기지 않는다.
     expect(call.args).not.toContain("--permission-mode");
     expect(value("--tools")).toBe("Read,Grep,Glob,Edit,Write,Bash");
-    expect(call.args).toContain("Edit(.pr-map/**)");
+    // 에이전트가 cd해도 결과 파일을 쓸 수 있게 절대 경로 규칙을 쓴다.
+    expect(call.args).toContain(`Edit(/${realpathSync(fx.root)}/.pr-map/**)`);
+    expect(call.args).not.toContain("Edit(.pr-map/**)");
     expect(call.args).toContain(
       `Bash(node ${ACTION_ROOT}/skill/pr-map/scripts/pr-map.js validate)`,
     );
@@ -251,9 +273,9 @@ describe("액션 단계 실행", () => {
   });
 
   it("시크릿이 없으면 등록 방법을 알려주고 실패한다", () => {
-    const { code, out } = runStep("check-key", { ANTHROPIC_API_KEY: "" });
+    const { code, out } = runStep("check-key", { PR_MAP_API_KEY: "" });
     expect(code).toBe(1);
-    expect(out).toContain("::error::ANTHROPIC_API_KEY 시크릿이 없습니다");
+    expect(out).toContain("::error::claude API 키 시크릿이 없습니다");
   });
 
   it("PR 번호가 없으면 수집하지 않는다", () => {
@@ -283,5 +305,83 @@ describe("액션 단계 실행", () => {
     const { code, out } = runStep("analyze", { FAKE_CLAUDE_CRASH: "1" });
     expect(code).toBe(1);
     expect(out).toContain("분석 결과를 읽지 못했습니다");
+  });
+
+  describe.each(["codex", "gemini"])("%s 읽기 전용 분석", (provider) => {
+    const installFake = (body: string) => {
+      const fake = path.join(path.dirname(fx.root), "bin", provider);
+      writeFileSync(fake, `#!/usr/bin/env node\n${body}`);
+      chmodSync(fake, 0o755);
+    };
+    // 호출을 기록하고, 정한 차례의 답변을 공급자 형식으로 낸다.
+    const fakeAgent = `
+const fs = require('fs');
+const log = process.env.FAKE_AGENT_LOG;
+const n = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\\n').filter(Boolean).length : 0;
+const args = process.argv.slice(2);
+const stdin = args.includes('-') ? fs.readFileSync(0, 'utf8') : '';
+fs.appendFileSync(log, JSON.stringify({ args, stdin, key: process.env.CODEX_API_KEY || process.env.GEMINI_API_KEY, leaked: process.env.PR_MAP_API_KEY ?? null, home: process.env.HOME, codexHome: process.env.CODEX_HOME, agents: fs.existsSync('AGENTS.md') }) + '\\n');
+if (process.env.FAKE_AGENT_CRASH) process.exit(1);
+const good = fs.readFileSync(process.env.FAKE_SAMPLE, 'utf8');
+const answer = n === 0 && process.env.FAKE_AGENT_BAD_FIRST ? 'JSON이 아닙니다' : '\`\`\`json\\n' + good + '\\n\`\`\`';
+if (args.includes('--output-last-message')) fs.writeFileSync(args[args.indexOf('--output-last-message') + 1], answer);
+else console.log(JSON.stringify({ response: answer }));
+`;
+    const calls = (log: string) =>
+      readFileSync(log, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    const env = (extra = {}) => ({
+      PR_MAP_PROVIDER: provider,
+      FAKE_AGENT_LOG: path.join(path.dirname(fx.root), "agent.log"),
+      ...extra,
+    });
+
+    beforeEach(() => {
+      installFake(fakeAgent);
+      writeFileSync(path.join(fx.root, "AGENTS.md"), "PR이 넣은 지시\n");
+      expect(runStep("collect").code).toBe(0);
+    });
+
+    it("답변을 저장하고 검증해 빌드까지 이어지며 PR의 지시 파일을 지운다", () => {
+      const r = runStep("analyze", env());
+      expect(r.code, r.out).toBe(0);
+      expect(r.out).toContain("분석 1회차: 검증 통과");
+      expect(existsSync(path.join(fx.root, "AGENTS.md"))).toBe(false);
+      const [call] = calls(env().FAKE_AGENT_LOG);
+      expect(call.key).toBe("sk-ant-test");
+      expect(call.leaked).toBeNull();
+      expect(call.agents).toBe(false);
+      expect(runStep("build").code).toBe(0);
+    });
+
+    it("JSON이 아니면 이유를 넣어 다시 요청한다", () => {
+      const r = runStep("analyze", env({ FAKE_AGENT_BAD_FIRST: "1" }));
+      expect(r.code, r.out).toBe(0);
+      expect(r.out).toContain("분석 1회차: JSON을 읽지 못했습니다");
+      expect(r.out).toContain("분석 2회차: 검증 통과");
+      expect(calls(env().FAKE_AGENT_LOG)).toHaveLength(2);
+    });
+
+    it("CLI가 실패하면 출력을 남기지 않고 실패한다", () => {
+      const r = runStep("analyze", env({ FAKE_AGENT_CRASH: "1" }));
+      expect(r.code).toBe(1);
+      expect(r.out).toContain(`::error::${provider} 실행이 실패했습니다`);
+    });
+
+    it("권한을 제한한 설정으로 실행한다", () => {
+      runStep("analyze", env());
+      const [call] = calls(env().FAKE_AGENT_LOG);
+      if (provider === "codex") {
+        expect(call.args).toEqual(expect.arrayContaining(["--sandbox", "read-only"]));
+        const config = readFileSync(path.join(call.codexHome, "config.toml"), "utf8");
+        expect(config).toContain('inherit = "none"');
+        expect(config).toContain('trust_level = "untrusted"');
+      } else {
+        const policy = readFileSync(path.join(call.home, ".gemini/policies/pr-map.toml"), "utf8");
+        expect(policy).toContain('toolName = "*"');
+        expect(policy).toContain('decision = "deny"');
+        expect(policy).not.toContain("run_shell_command");
+        expect(policy).not.toContain("write_file");
+      }
+    });
   });
 });

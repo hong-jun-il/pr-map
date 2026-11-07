@@ -3,13 +3,16 @@ import path from "node:path";
 import type { ChangedFile, CollectInput, PrInfo, PrMap } from "../shared/types";
 import { collectCandidates } from "./candidates";
 import { classify, readConfig } from "./classify";
+import { buildDiffText } from "./diff";
 import { CliError, git, originRepo, repoRoot, run, tryGit } from "./git";
 import {
+  diffPath,
   inputPath,
   mapPath,
   readJsonIfExists,
   statePath,
   writeJson,
+  writeText,
 } from "./paths";
 
 export function parseChanges(
@@ -227,6 +230,12 @@ export function collect(cwd: string, opts: CollectOptions): CollectInput {
   };
 
   writeJson(inputPath(root), input);
+  // 변경 파일과, 근거로 연결할 수 있는 바뀐 테스트의 내용을 한 파일로 모은다.
+  const changedTests = unclassified.filter((f) => f.category === "test");
+  writeText(
+    diffPath(root),
+    buildDiffText(root, mergeBase, head, [...files, ...changedTests]),
+  );
   writeJson(statePath(root), { head, attempts: 0, errors: [] });
   excludeOutput(root);
   return input;

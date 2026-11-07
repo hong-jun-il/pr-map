@@ -1,7 +1,7 @@
 name: PR Map
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -28,4 +28,5 @@ jobs:
           persist-credentials: false # 분석 에이전트가 토큰을 읽지 못하게 한다
       - uses: hong-jun-il/pr-map@v1
         with:
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          provider: claude
+          api-key: ${{ secrets.ANTHROPIC_API_KEY }}

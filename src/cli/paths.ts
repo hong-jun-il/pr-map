@@ -4,6 +4,7 @@ import path from "node:path";
 export const outDir = (root: string) => path.join(root, ".pr-map");
 export const inputPath = (root: string) =>
   path.join(outDir(root), "input.json");
+export const diffPath = (root: string) => path.join(outDir(root), "diff.txt");
 export const mapPath = (root: string) => path.join(outDir(root), "pr-map.json");
 export const statePath = (root: string) =>
   path.join(outDir(root), "validate-state.json");
