@@ -14,7 +14,13 @@ const ACTION_REPO = "hong-jun-il/pr-map";
 const ACTION_TAG = "v1";
 const WORKFLOW_PATH = ".github/workflows/pr-map.yml";
 const SETUP_BRANCH = "pr-map/setup";
-const SECRET_NAME = "ANTHROPIC_API_KEY";
+
+export const PROVIDERS = {
+  claude: "ANTHROPIC_API_KEY",
+  codex: "OPENAI_API_KEY",
+  gemini: "GEMINI_API_KEY",
+} as const;
+export type Provider = keyof typeof PROVIDERS;
 
 type GhState = "ready" | "unauthenticated" | "missing";
 type ActionState = "published" | "missing" | "unknown";
@@ -25,6 +31,7 @@ export interface SetupOptions {
   install: boolean;
   force: boolean;
   secretFromEnv: boolean;
+  provider: Provider;
 }
 
 function stderrOf(err: unknown): string {
@@ -78,17 +85,19 @@ function fetchBranch(root: string, branch: string): string {
   return git(root, "rev-parse", "FETCH_HEAD").trim();
 }
 
-function workflowTemplate(): string {
-  return readFileSync(path.join(assetsDir(), "pr-map.yml"), "utf8");
+function workflowTemplate(provider: Provider): string {
+  return readFileSync(path.join(assetsDir(), "pr-map.yml"), "utf8")
+    .replace("provider: claude", `provider: ${provider}`)
+    .replace("secrets.ANTHROPIC_API_KEY", `secrets.${PROVIDERS[provider]}`);
 }
 
-function workflowState(root: string, commit: string): WorkflowState {
+function workflowState(root: string, commit: string, provider: Provider): WorkflowState {
   const existing = tryGit(root, "show", `${commit}:${WORKFLOW_PATH}`);
   if (existing === null) return "missing";
-  return existing === workflowTemplate() ? "current" : "different";
+  return existing === workflowTemplate(provider) ? "current" : "different";
 }
 
-function secretState(root: string, repo: string, gh: GhState): SecretState {
+function secretState(root: string, repo: string, gh: GhState, secretName: string): SecretState {
   if (gh !== "ready") return "unknown";
   try {
     const names = run(
@@ -96,7 +105,7 @@ function secretState(root: string, repo: string, gh: GhState): SecretState {
       ["secret", "list", "--repo", repo, "--json", "name", "--jq", ".[].name"],
       root,
     );
-    return names.split("\n").includes(SECRET_NAME) ? "registered" : "missing";
+    return names.split("\n").includes(secretName) ? "registered" : "missing";
   } catch {
     return "unknown";
   }
@@ -118,14 +127,15 @@ function actionProblem(state: ActionState): string | null {
   return `${action}을(를) 확인하지 못했습니다. 저장소가 비공개이거나 네트워크 문제일 수 있습니다.`;
 }
 
-function showStatus(root: string): void {
+function showStatus(root: string, provider: Provider): void {
+  const secretName = PROVIDERS[provider];
   const repo = originRepo(root);
   const base = defaultBranch(root);
-  const workflow = workflowState(root, fetchBranch(root, base));
+  const workflow = workflowState(root, fetchBranch(root, base), provider);
   const action = actionState(root);
   const gh = ghState(root);
-  const secret = secretState(root, repo, gh);
-  const hasEnvKey = !!process.env[SECRET_NAME]?.trim();
+  const secret = secretState(root, repo, gh, secretName);
+  const hasEnvKey = !!process.env[secretName]?.trim();
 
   const labels = {
     action: { published: "게시됨", missing: "태그 없음", unknown: "확인 불가" },
@@ -138,27 +148,28 @@ function showStatus(root: string): void {
     secret: { registered: "등록됨", missing: "없음", unknown: "확인 불가" },
   };
   console.log(`저장소: ${repo} (기본 브랜치 ${base})`);
+  console.log(`공급자: ${provider}`);
   console.log(`액션 ${ACTION_REPO}@${ACTION_TAG}: ${labels.action[action]}`);
   console.log(`워크플로 ${WORKFLOW_PATH}: ${labels.workflow[workflow]}`);
   console.log(`gh: ${labels.gh[gh]}`);
-  console.log(`환경변수 ${SECRET_NAME}: ${hasEnvKey ? "있음" : "없음"}`);
-  console.log(`시크릿 ${SECRET_NAME}: ${labels.secret[secret]}`);
+  console.log(`환경변수 ${secretName}: ${hasEnvKey ? "있음" : "없음"}`);
+  console.log(`시크릿 ${secretName}: ${labels.secret[secret]}`);
 
   const steps: string[] = [];
   const problem = actionProblem(action);
   if (problem) steps.push(`설치 불가: ${problem}`);
   else if (workflow === "missing")
-    steps.push("워크플로 설치 PR 만들기: setup --install");
+    steps.push(`워크플로 설치 PR 만들기: setup --install --provider ${provider}`);
   else if (workflow === "different")
     steps.push(
-      "기존 워크플로를 덮어쓸지 사용자에게 확인: setup --install --force",
+      `기존 워크플로를 덮어쓸지 사용자에게 확인: setup --install --force --provider ${provider}`,
     );
   if (secret !== "registered") {
     if (gh === "ready" && hasEnvKey)
-      steps.push("시크릿 등록(사용자 동의 필요): setup --secret-from-env");
+      steps.push(`시크릿 등록(사용자 동의 필요): setup --secret-from-env --provider ${provider}`);
     else if (gh === "ready")
       steps.push(
-        `시크릿 등록(사용자 터미널에서): gh secret set ${SECRET_NAME} --repo ${repo}`,
+        `시크릿 등록(사용자 터미널에서): gh secret set ${secretName} --repo ${repo}`,
       );
     else steps.push(`시크릿 등록(웹): ${secretUrl(repo)}`);
   }
@@ -170,13 +181,13 @@ function showStatus(root: string): void {
 }
 
 /** 사용자의 체크아웃을 건드리지 않도록 임시 worktree에서 커밋해 올린다. */
-function pushWorkflowBranch(root: string, commit: string): void {
+function pushWorkflowBranch(root: string, commit: string, provider: Provider): void {
   const dir = mkdtempSync(path.join(tmpdir(), "pr-map-setup-"));
   try {
     git(root, "worktree", "add", "-q", "--detach", dir, commit);
     const file = path.join(dir, WORKFLOW_PATH);
     mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, workflowTemplate());
+    writeFileSync(file, workflowTemplate(provider));
     git(dir, "add", WORKFLOW_PATH);
     // 임시 worktree에는 node_modules가 없어 저장소의 훅이 실패할 수 있다. 내용은 PR에서 검토한다.
     git(
@@ -205,7 +216,7 @@ function pushWorkflowBranch(root: string, commit: string): void {
   }
 }
 
-function openInstallPr(root: string, repo: string, base: string): void {
+function openInstallPr(root: string, repo: string, base: string, secretName: string): void {
   const manual = () =>
     console.log(`이 링크에서 PR을 만드세요: ${compareUrl(repo, base)}`);
   if (ghState(root) !== "ready") {
@@ -249,7 +260,7 @@ function openInstallPr(root: string, repo: string, base: string): void {
         "--title",
         "PR Map 자동 실행 설치",
         "--body",
-        `PR이 열리거나 갱신될 때 PR Map을 실행하는 워크플로를 추가합니다.\n\n머지 전에 저장소 시크릿 \`${SECRET_NAME}\`을 등록해야 합니다.`,
+        `PR이 열리거나 갱신될 때 PR Map을 실행하는 워크플로를 추가합니다.\n\n머지 전에 저장소 시크릿 \`${secretName}\`을 등록해야 합니다.`,
       ],
       root,
     ).trim();
@@ -260,14 +271,14 @@ function openInstallPr(root: string, repo: string, base: string): void {
   }
 }
 
-function install(root: string, force: boolean): number {
+function install(root: string, force: boolean, provider: Provider): number {
   const repo = originRepo(root);
   const problem = actionProblem(actionState(root));
   if (problem) throw new CliError(`설치하지 않았습니다. ${problem}`);
 
   const base = defaultBranch(root);
   const commit = fetchBranch(root, base);
-  const workflow = workflowState(root, commit);
+  const workflow = workflowState(root, commit, provider);
   if (workflow === "current") {
     console.log(`${base} 브랜치에 워크플로가 이미 설치되어 있습니다.`);
     return 0;
@@ -292,13 +303,14 @@ function install(root: string, force: boolean): number {
   }
   if (branchExists)
     console.log(`원격의 ${SETUP_BRANCH} 브랜치를 그대로 사용합니다.`);
-  else pushWorkflowBranch(root, commit);
+  else pushWorkflowBranch(root, commit, provider);
 
-  openInstallPr(root, repo, base);
+  openInstallPr(root, repo, base, PROVIDERS[provider]);
   return 0;
 }
 
-function registerSecretFromEnv(root: string): number {
+function registerSecretFromEnv(root: string, provider: Provider): number {
+  const secretName = PROVIDERS[provider];
   const repo = originRepo(root);
   const gh = ghState(root);
   if (gh !== "ready") {
@@ -306,25 +318,25 @@ function registerSecretFromEnv(root: string): number {
       `gh를 사용할 수 없습니다(${gh === "missing" ? "설치 안 됨" : "로그인 필요"}). 웹에서 등록하세요: ${secretUrl(repo)}`,
     );
   }
-  const key = process.env[SECRET_NAME]?.trim();
+  const key = process.env[secretName]?.trim();
   if (!key)
     throw new CliError(
-      `환경변수 ${SECRET_NAME}이 없습니다. 터미널에서 직접 등록하세요: gh secret set ${SECRET_NAME} --repo ${repo}`,
+      `환경변수 ${secretName}이 없습니다. 터미널에서 직접 등록하세요: gh secret set ${secretName} --repo ${repo}`,
     );
   try {
     // 표준 입력으로 넘겨 값이 명령 인자나 출력에 남지 않게 한다.
-    run("gh", ["secret", "set", SECRET_NAME, "--repo", repo], root, key);
+    run("gh", ["secret", "set", secretName, "--repo", repo], root, key);
   } catch (err) {
     throw new CliError(
       `시크릿을 등록하지 못했습니다. 저장소 권한을 확인하세요.\n${stderrOf(err)}`.trim(),
     );
   }
-  if (secretState(root, repo, gh) !== "registered") {
+  if (secretState(root, repo, gh, secretName) !== "registered") {
     throw new CliError(
-      `등록 후 ${SECRET_NAME}을 확인하지 못했습니다. 저장소 설정에서 확인하세요: https://github.com/${repo}/settings/secrets/actions`,
+      `등록 후 ${secretName}을 확인하지 못했습니다. 저장소 설정에서 확인하세요: https://github.com/${repo}/settings/secrets/actions`,
     );
   }
-  console.log(`시크릿 ${SECRET_NAME} 등록 완료: ${repo}`);
+  console.log(`시크릿 ${secretName} 등록 완료: ${repo}`);
   return 0;
 }
 
@@ -335,8 +347,8 @@ export function cmdSetup(root: string, opts: SetupOptions): number {
     throw new CliError("--install과 --secret-from-env는 따로 실행하세요.");
   if (opts.force && !opts.install)
     throw new CliError("--force는 --install과 함께 쓰세요.");
-  if (opts.install) return install(root, opts.force);
-  if (opts.secretFromEnv) return registerSecretFromEnv(root);
-  showStatus(root);
+  if (opts.install) return install(root, opts.force, opts.provider);
+  if (opts.secretFromEnv) return registerSecretFromEnv(root, opts.provider);
+  showStatus(root, opts.provider);
   return 0;
 }

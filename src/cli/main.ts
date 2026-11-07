@@ -25,7 +25,7 @@ import {
 } from "./paths";
 import { cmdClean } from "./clean";
 import { expandCompactRefs } from "./compact";
-import { cmdSetup } from "./setup";
+import { cmdSetup, PROVIDERS, type Provider } from "./setup";
 import { cmdUpdate, printUpdateNotice, refreshUpdateCache } from "./update";
 import {
   checkRules,
@@ -353,7 +353,7 @@ const USAGE = `사용법: pr-map <명령>
   build                                 뷰어와 PR 댓글을 만듭니다
   publish                               PR 댓글을 게시하거나 갱신합니다
   view [--no-open]                      뷰어를 엽니다
-  setup                                 자동 실행 설치 상태와 다음 단계를 보여줍니다
+  setup [--provider <공급자>]            자동 실행 설치 상태와 다음 단계를 보여줍니다
   setup --install [--force]             워크플로 설치 브랜치를 올리고 PR을 만듭니다
   setup --secret-from-env               환경변수의 API 키를 저장소 시크릿으로 등록합니다
   clean                                 이 클론의 .pr-map/과 .git/info/exclude 줄을 지웁니다
@@ -370,6 +370,7 @@ function main(): number {
       install: { type: "boolean" },
       force: { type: "boolean" },
       "secret-from-env": { type: "boolean" },
+      provider: { type: "string" },
       apply: { type: "boolean" },
     },
     allowPositionals: false,
@@ -406,12 +407,17 @@ function main(): number {
     case "clean":
       cmdClean(root);
       return 0;
-    case "setup":
+    case "setup": {
+      const provider = values.provider ?? "claude";
+      if (!Object.hasOwn(PROVIDERS, provider))
+        throw new CliError("--provider에는 claude, codex, gemini 중 하나를 쓰세요.");
       return cmdSetup(root, {
+        provider: provider as Provider,
         install: !!values.install,
         force: !!values.force,
         secretFromEnv: !!values["secret-from-env"],
       });
+    }
     default:
       console.error(USAGE);
       return 1;
