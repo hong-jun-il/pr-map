@@ -16526,7 +16526,11 @@ var ACTION_REPO = "hong-jun-il/pr-map";
 var ACTION_TAG = "v1";
 var WORKFLOW_PATH = ".github/workflows/pr-map.yml";
 var SETUP_BRANCH = "pr-map/setup";
-var SECRET_NAME = "ANTHROPIC_API_KEY";
+var PROVIDERS = {
+  claude: "ANTHROPIC_API_KEY",
+  codex: "OPENAI_API_KEY",
+  gemini: "GEMINI_API_KEY"
+};
 function stderrOf(err) {
   return err.stderr?.trim() ?? "";
 }
@@ -16574,15 +16578,15 @@ ${stderrOf(err)}`.trim()
   }
   return git(root, "rev-parse", "FETCH_HEAD").trim();
 }
-function workflowTemplate() {
-  return (0, import_node_fs6.readFileSync)(import_node_path7.default.join(assetsDir(), "pr-map.yml"), "utf8");
+function workflowTemplate(provider) {
+  return (0, import_node_fs6.readFileSync)(import_node_path7.default.join(assetsDir(), "pr-map.yml"), "utf8").replace("provider: claude", `provider: ${provider}`).replace("secrets.ANTHROPIC_API_KEY", `secrets.${PROVIDERS[provider]}`);
 }
-function workflowState(root, commit) {
+function workflowState(root, commit, provider) {
   const existing = tryGit(root, "show", `${commit}:${WORKFLOW_PATH}`);
   if (existing === null) return "missing";
-  return existing === workflowTemplate() ? "current" : "different";
+  return existing === workflowTemplate(provider) ? "current" : "different";
 }
-function secretState(root, repo, gh) {
+function secretState(root, repo, gh, secretName) {
   if (gh !== "ready") return "unknown";
   try {
     const names = run(
@@ -16590,7 +16594,7 @@ function secretState(root, repo, gh) {
       ["secret", "list", "--repo", repo, "--json", "name", "--jq", ".[].name"],
       root
     );
-    return names.split("\n").includes(SECRET_NAME) ? "registered" : "missing";
+    return names.split("\n").includes(secretName) ? "registered" : "missing";
   } catch {
     return "unknown";
   }
@@ -16608,14 +16612,15 @@ function actionProblem(state) {
     return `${action} \uD0DC\uADF8\uAC00 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4. \uC9C0\uAE08 \uC124\uCE58\uD558\uBA74 PR\uB9C8\uB2E4 \uC6CC\uD06C\uD50C\uB85C\uAC00 \uC2E4\uD328\uD569\uB2C8\uB2E4.`;
   return `${action}\uC744(\uB97C) \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C\uAC00 \uBE44\uACF5\uAC1C\uC774\uAC70\uB098 \uB124\uD2B8\uC6CC\uD06C \uBB38\uC81C\uC77C \uC218 \uC788\uC2B5\uB2C8\uB2E4.`;
 }
-function showStatus(root) {
+function showStatus(root, provider) {
+  const secretName = PROVIDERS[provider];
   const repo = originRepo(root);
   const base = defaultBranch2(root);
-  const workflow = workflowState(root, fetchBranch(root, base));
+  const workflow = workflowState(root, fetchBranch(root, base), provider);
   const action = actionState(root);
   const gh = ghState(root);
-  const secret = secretState(root, repo, gh);
-  const hasEnvKey = !!process.env[SECRET_NAME]?.trim();
+  const secret = secretState(root, repo, gh, secretName);
+  const hasEnvKey = !!process.env[secretName]?.trim();
   const labels = {
     action: { published: "\uAC8C\uC2DC\uB428", missing: "\uD0DC\uADF8 \uC5C6\uC74C", unknown: "\uD655\uC778 \uBD88\uAC00" },
     workflow: { current: "\uC124\uCE58\uB428", different: "\uB0B4\uC6A9\uC774 \uB2E4\uB984", missing: "\uC5C6\uC74C" },
@@ -16627,26 +16632,27 @@ function showStatus(root) {
     secret: { registered: "\uB4F1\uB85D\uB428", missing: "\uC5C6\uC74C", unknown: "\uD655\uC778 \uBD88\uAC00" }
   };
   console.log(`\uC800\uC7A5\uC18C: ${repo} (\uAE30\uBCF8 \uBE0C\uB79C\uCE58 ${base})`);
+  console.log(`\uACF5\uAE09\uC790: ${provider}`);
   console.log(`\uC561\uC158 ${ACTION_REPO}@${ACTION_TAG}: ${labels.action[action]}`);
   console.log(`\uC6CC\uD06C\uD50C\uB85C ${WORKFLOW_PATH}: ${labels.workflow[workflow]}`);
   console.log(`gh: ${labels.gh[gh]}`);
-  console.log(`\uD658\uACBD\uBCC0\uC218 ${SECRET_NAME}: ${hasEnvKey ? "\uC788\uC74C" : "\uC5C6\uC74C"}`);
-  console.log(`\uC2DC\uD06C\uB9BF ${SECRET_NAME}: ${labels.secret[secret]}`);
+  console.log(`\uD658\uACBD\uBCC0\uC218 ${secretName}: ${hasEnvKey ? "\uC788\uC74C" : "\uC5C6\uC74C"}`);
+  console.log(`\uC2DC\uD06C\uB9BF ${secretName}: ${labels.secret[secret]}`);
   const steps = [];
   const problem = actionProblem(action);
   if (problem) steps.push(`\uC124\uCE58 \uBD88\uAC00: ${problem}`);
   else if (workflow === "missing")
-    steps.push("\uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 PR \uB9CC\uB4E4\uAE30: setup --install");
+    steps.push(`\uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 PR \uB9CC\uB4E4\uAE30: setup --install --provider ${provider}`);
   else if (workflow === "different")
     steps.push(
-      "\uAE30\uC874 \uC6CC\uD06C\uD50C\uB85C\uB97C \uB36E\uC5B4\uC4F8\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD655\uC778: setup --install --force"
+      `\uAE30\uC874 \uC6CC\uD06C\uD50C\uB85C\uB97C \uB36E\uC5B4\uC4F8\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD655\uC778: setup --install --force --provider ${provider}`
     );
   if (secret !== "registered") {
     if (gh === "ready" && hasEnvKey)
-      steps.push("\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uB3D9\uC758 \uD544\uC694): setup --secret-from-env");
+      steps.push(`\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uB3D9\uC758 \uD544\uC694): setup --secret-from-env --provider ${provider}`);
     else if (gh === "ready")
       steps.push(
-        `\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uD130\uBBF8\uB110\uC5D0\uC11C): gh secret set ${SECRET_NAME} --repo ${repo}`
+        `\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uD130\uBBF8\uB110\uC5D0\uC11C): gh secret set ${secretName} --repo ${repo}`
       );
     else steps.push(`\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC6F9): ${secretUrl(repo)}`);
   }
@@ -16655,13 +16661,13 @@ function showStatus(root) {
 ${steps.map((s) => `- ${s}`).join("\n")}` : "\uC124\uCE58\uAC00 \uB05D\uB0AC\uC2B5\uB2C8\uB2E4."
   );
 }
-function pushWorkflowBranch(root, commit) {
+function pushWorkflowBranch(root, commit, provider) {
   const dir = (0, import_node_fs6.mkdtempSync)(import_node_path7.default.join((0, import_node_os.tmpdir)(), "pr-map-setup-"));
   try {
     git(root, "worktree", "add", "-q", "--detach", dir, commit);
     const file = import_node_path7.default.join(dir, WORKFLOW_PATH);
     (0, import_node_fs6.mkdirSync)(import_node_path7.default.dirname(file), { recursive: true });
-    (0, import_node_fs6.writeFileSync)(file, workflowTemplate());
+    (0, import_node_fs6.writeFileSync)(file, workflowTemplate(provider));
     git(dir, "add", WORKFLOW_PATH);
     git(
       dir,
@@ -16689,7 +16695,7 @@ ${stderrOf(err)}`.trim()
     (0, import_node_fs6.rmSync)(dir, { recursive: true, force: true });
   }
 }
-function openInstallPr(root, repo, base) {
+function openInstallPr(root, repo, base, secretName) {
   const manual = () => console.log(`\uC774 \uB9C1\uD06C\uC5D0\uC11C PR\uC744 \uB9CC\uB4DC\uC138\uC694: ${compareUrl(repo, base)}`);
   if (ghState(root) !== "ready") {
     manual();
@@ -16734,7 +16740,7 @@ function openInstallPr(root, repo, base) {
         "--body",
         `PR\uC774 \uC5F4\uB9AC\uAC70\uB098 \uAC31\uC2E0\uB420 \uB54C PR Map\uC744 \uC2E4\uD589\uD558\uB294 \uC6CC\uD06C\uD50C\uB85C\uB97C \uCD94\uAC00\uD569\uB2C8\uB2E4.
 
-\uBA38\uC9C0 \uC804\uC5D0 \uC800\uC7A5\uC18C \uC2DC\uD06C\uB9BF \`${SECRET_NAME}\`\uC744 \uB4F1\uB85D\uD574\uC57C \uD569\uB2C8\uB2E4.`
+\uBA38\uC9C0 \uC804\uC5D0 \uC800\uC7A5\uC18C \uC2DC\uD06C\uB9BF \`${secretName}\`\uC744 \uB4F1\uB85D\uD574\uC57C \uD569\uB2C8\uB2E4.`
       ],
       root
     ).trim();
@@ -16744,13 +16750,13 @@ function openInstallPr(root, repo, base) {
     manual();
   }
 }
-function install(root, force) {
+function install(root, force, provider) {
   const repo = originRepo(root);
   const problem = actionProblem(actionState(root));
   if (problem) throw new CliError(`\uC124\uCE58\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. ${problem}`);
   const base = defaultBranch2(root);
   const commit = fetchBranch(root, base);
-  const workflow = workflowState(root, commit);
+  const workflow = workflowState(root, commit, provider);
   if (workflow === "current") {
     console.log(`${base} \uBE0C\uB79C\uCE58\uC5D0 \uC6CC\uD06C\uD50C\uB85C\uAC00 \uC774\uBBF8 \uC124\uCE58\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.`);
     return 0;
@@ -16774,11 +16780,12 @@ function install(root, force) {
   }
   if (branchExists)
     console.log(`\uC6D0\uACA9\uC758 ${SETUP_BRANCH} \uBE0C\uB79C\uCE58\uB97C \uADF8\uB300\uB85C \uC0AC\uC6A9\uD569\uB2C8\uB2E4.`);
-  else pushWorkflowBranch(root, commit);
-  openInstallPr(root, repo, base);
+  else pushWorkflowBranch(root, commit, provider);
+  openInstallPr(root, repo, base, PROVIDERS[provider]);
   return 0;
 }
-function registerSecretFromEnv(root) {
+function registerSecretFromEnv(root, provider) {
+  const secretName = PROVIDERS[provider];
   const repo = originRepo(root);
   const gh = ghState(root);
   if (gh !== "ready") {
@@ -16786,25 +16793,25 @@ function registerSecretFromEnv(root) {
       `gh\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4(${gh === "missing" ? "\uC124\uCE58 \uC548 \uB428" : "\uB85C\uADF8\uC778 \uD544\uC694"}). \uC6F9\uC5D0\uC11C \uB4F1\uB85D\uD558\uC138\uC694: ${secretUrl(repo)}`
     );
   }
-  const key = process.env[SECRET_NAME]?.trim();
+  const key = process.env[secretName]?.trim();
   if (!key)
     throw new CliError(
-      `\uD658\uACBD\uBCC0\uC218 ${SECRET_NAME}\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD130\uBBF8\uB110\uC5D0\uC11C \uC9C1\uC811 \uB4F1\uB85D\uD558\uC138\uC694: gh secret set ${SECRET_NAME} --repo ${repo}`
+      `\uD658\uACBD\uBCC0\uC218 ${secretName}\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD130\uBBF8\uB110\uC5D0\uC11C \uC9C1\uC811 \uB4F1\uB85D\uD558\uC138\uC694: gh secret set ${secretName} --repo ${repo}`
     );
   try {
-    run("gh", ["secret", "set", SECRET_NAME, "--repo", repo], root, key);
+    run("gh", ["secret", "set", secretName, "--repo", repo], root, key);
   } catch (err) {
     throw new CliError(
       `\uC2DC\uD06C\uB9BF\uC744 \uB4F1\uB85D\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694.
 ${stderrOf(err)}`.trim()
     );
   }
-  if (secretState(root, repo, gh) !== "registered") {
+  if (secretState(root, repo, gh, secretName) !== "registered") {
     throw new CliError(
-      `\uB4F1\uB85D \uD6C4 ${SECRET_NAME}\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uC124\uC815\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694: https://github.com/${repo}/settings/secrets/actions`
+      `\uB4F1\uB85D \uD6C4 ${secretName}\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC18C \uC124\uC815\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694: https://github.com/${repo}/settings/secrets/actions`
     );
   }
-  console.log(`\uC2DC\uD06C\uB9BF ${SECRET_NAME} \uB4F1\uB85D \uC644\uB8CC: ${repo}`);
+  console.log(`\uC2DC\uD06C\uB9BF ${secretName} \uB4F1\uB85D \uC644\uB8CC: ${repo}`);
   return 0;
 }
 function cmdSetup(root, opts) {
@@ -16813,9 +16820,9 @@ function cmdSetup(root, opts) {
     throw new CliError("--install\uACFC --secret-from-env\uB294 \uB530\uB85C \uC2E4\uD589\uD558\uC138\uC694.");
   if (opts.force && !opts.install)
     throw new CliError("--force\uB294 --install\uACFC \uD568\uAED8 \uC4F0\uC138\uC694.");
-  if (opts.install) return install(root, opts.force);
-  if (opts.secretFromEnv) return registerSecretFromEnv(root);
-  showStatus(root);
+  if (opts.install) return install(root, opts.force, opts.provider);
+  if (opts.secretFromEnv) return registerSecretFromEnv(root, opts.provider);
+  showStatus(root, opts.provider);
   return 0;
 }
 
@@ -17248,7 +17255,7 @@ var USAGE = `\uC0AC\uC6A9\uBC95: pr-map <\uBA85\uB839>
   build                                 \uBDF0\uC5B4\uC640 PR \uB313\uAE00\uC744 \uB9CC\uB4ED\uB2C8\uB2E4
   publish                               PR \uB313\uAE00\uC744 \uAC8C\uC2DC\uD558\uAC70\uB098 \uAC31\uC2E0\uD569\uB2C8\uB2E4
   view [--no-open]                      \uBDF0\uC5B4\uB97C \uC5FD\uB2C8\uB2E4
-  setup                                 \uC790\uB3D9 \uC2E4\uD589 \uC124\uCE58 \uC0C1\uD0DC\uC640 \uB2E4\uC74C \uB2E8\uACC4\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4
+  setup [--provider <\uACF5\uAE09\uC790>]            \uC790\uB3D9 \uC2E4\uD589 \uC124\uCE58 \uC0C1\uD0DC\uC640 \uB2E4\uC74C \uB2E8\uACC4\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4
   setup --install [--force]             \uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 \uBE0C\uB79C\uCE58\uB97C \uC62C\uB9AC\uACE0 PR\uC744 \uB9CC\uB4ED\uB2C8\uB2E4
   setup --secret-from-env               \uD658\uACBD\uBCC0\uC218\uC758 API \uD0A4\uB97C \uC800\uC7A5\uC18C \uC2DC\uD06C\uB9BF\uC73C\uB85C \uB4F1\uB85D\uD569\uB2C8\uB2E4
   clean                                 \uC774 \uD074\uB860\uC758 .pr-map/\uACFC .git/info/exclude \uC904\uC744 \uC9C0\uC6C1\uB2C8\uB2E4
@@ -17264,6 +17271,7 @@ function main() {
       install: { type: "boolean" },
       force: { type: "boolean" },
       "secret-from-env": { type: "boolean" },
+      provider: { type: "string" },
       apply: { type: "boolean" }
     },
     allowPositionals: false
@@ -17299,12 +17307,17 @@ function main() {
     case "clean":
       cmdClean(root);
       return 0;
-    case "setup":
+    case "setup": {
+      const provider = values.provider ?? "claude";
+      if (!Object.hasOwn(PROVIDERS, provider))
+        throw new CliError("--provider\uC5D0\uB294 claude, codex, gemini \uC911 \uD558\uB098\uB97C \uC4F0\uC138\uC694.");
       return cmdSetup(root, {
+        provider,
         install: !!values.install,
         force: !!values.force,
         secretFromEnv: !!values["secret-from-env"]
       });
+    }
     default:
       console.error(USAGE);
       return 1;

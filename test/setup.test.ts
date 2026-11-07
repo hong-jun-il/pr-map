@@ -73,9 +73,8 @@ describe("워크플로 템플릿", () => {
   it("액션을 v1로 호출하고 시크릿을 넘긴다", () => {
     const steps = parse(readFileSync(TEMPLATE, "utf8")).jobs["pr-map"].steps;
     expect(steps[1].uses).toBe("hong-jun-il/pr-map@v1");
-    expect(steps[1].with["anthropic-api-key"]).toBe(
-      "${{ secrets.ANTHROPIC_API_KEY }}",
-    );
+    expect(steps[1].with.provider).toBe("claude");
+    expect(steps[1].with["api-key"]).toBe("${{ secrets.ANTHROPIC_API_KEY }}");
   });
 });
 
@@ -270,6 +269,20 @@ describe("setup", () => {
     expect(noAuth.out).toContain("로그인 필요");
     expect(noAuth.out).toContain("settings/secrets/actions/new");
     expect(ghCalls(r).some((c) => c.args[1] === "set")).toBe(false);
+  });
+
+  it("--provider: 고른 공급자의 값으로 워크플로와 시크릿을 다룬다", () => {
+    const { code } = setup(r, ["--install", "--provider", "gemini"]);
+    expect(code).toBe(0);
+    const yml = g(r.bare, "show", `pr-map/setup:${WORKFLOW}`);
+    expect(yml).toContain("provider: gemini");
+    expect(yml).toContain("secrets.GEMINI_API_KEY");
+    expect(yml).not.toContain("ANTHROPIC");
+
+    const status = setup(r, ["--provider", "codex"]);
+    expect(status.out).toContain("공급자: codex");
+    expect(status.out).toContain("gh secret set OPENAI_API_KEY");
+    expect(setup(r, ["--provider", "copilot"]).code).toBe(1);
   });
 
   it("옵션을 잘못 조합하면 거부한다", () => {

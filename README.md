@@ -18,22 +18,25 @@ PR의 변경을 파일별 자연어 동작 트리와 연결 관계로 보여주�
 
 필요한 도구는 Node 20 이상, `git`, `gh`(인증 완료)입니다. 분석은 실행 중인 에이전트의 모델이 하므로 API 키가 필요 없습니다.
 
-`setup`은 `gh` 없이도 진행할 수 있습니다. 이때 PR과 시크릿은 출력된 링크에서 직접 만듭니다. 자동 실행은 GitHub Actions에서 돌기 때문에 저장소 시크릿 `ANTHROPIC_API_KEY`가 필요합니다. 액션 `hong-jun-il/pr-map@v1`이 게시되기 전에는 `setup --install`이 설치를 거부합니다.
+`setup`은 `gh` 없이도 진행할 수 있습니다. 이때 PR과 시크릿은 출력된 링크에서 직접 만듭니다. 자동 실행은 GitHub Actions에서 돌기 때문에 고른 공급자의 저장소 시크릿(Claude `ANTHROPIC_API_KEY`, Codex `OPENAI_API_KEY`, Gemini `GEMINI_API_KEY`)이 필요합니다. 액션 `hong-jun-il/pr-map@v1`이 게시되기 전에는 `setup --install`이 설치를 거부합니다.
 
 결과는 `.pr-map/`에 저장됩니다. 코드 원문이 들어 있어서 `collect`가 이 클론의 `.git/info/exclude`에 등록해 커밋되지 않게 합니다.
 
 ### 자동 실행: `action.yml`
 
-설치된 워크플로는 같은 저장소에서 연 PR만 분석합니다. 포크 PR, 초안, Dependabot PR과 `no-pr-map` 라벨이 붙은 PR은 건너뜁니다. 라벨 변경만으로는 다시 분석하지 않으므로, `no-pr-map`을 뗀 PR은 다음 푸시 때 분석합니다. 자동 실행은 PR 코드를 Anthropic API로 보내고, 사용량은 등록한 API 키에 청구됩니다.
+설치된 워크플로는 같은 저장소에서 연 PR만 분석합니다. 포크 PR, 초안, Dependabot PR과 `no-pr-map` 라벨이 붙은 PR은 건너뜁니다. 라벨 변경만으로는 다시 분석하지 않으므로, `no-pr-map`을 뗀 PR은 다음 푸시 때 분석합니다. 자동 실행은 PR 코드를 고른 공급자의 API로 보내고, 사용량은 등록한 API 키에 청구됩니다.
 
-| 입력                  | 기본값         | 설명                            |
-| --------------------- | -------------- | ------------------------------- |
-| `anthropic-api-key`   | 필수           | 저장소 시크릿으로 넘기는 API 키 |
-| `github-token`        | `github.token` | PR 조회와 댓글 게시용 토큰      |
-| `model`               | `sonnet`       | 분석 모델                       |
-| `max-turns`           | `80`           | 에이전트의 최대 턴 수           |
-| `max-budget-usd`      | `5`            | 실행당 비용 상한(추정치 기준)   |
-| `claude-code-version` | `2.1.318`      | 설치할 Claude Code 버전         |
+| 입력             | 기본값         | 설명                                  |
+| ---------------- | -------------- | ------------------------------------- |
+| `provider`       | `claude`       | `claude`, `codex`, `gemini`           |
+| `api-key`        | 필수           | 저장소 시크릿으로 넘기는 API 키       |
+| `github-token`   | `github.token` | PR 조회와 댓글 게시용 토큰            |
+| `model`          | 공급자 기본값  | 분석 모델                             |
+| `max-turns`      | `80`           | 최대 턴 수 (Claude, Gemini)           |
+| `max-budget-usd` | `5`            | 실행당 비용 상한, 추정치 기준 (Claude) |
+| `cli-version`    | 고정 버전      | 설치할 공급자 CLI 버전                |
+
+Codex와 Gemini는 코드를 읽기만 하고 지도를 답변으로 냅니다. 저장과 검증은 스크립트가 하고, 분석 전에 저장소의 `.codex`, `.gemini`, `AGENTS.md`, `GEMINI.md`를 일회용 체크아웃에서 지웁니다. Codex와 Gemini는 비용 상한을 지원하지 않으므로 공급자 쪽 지출 한도를 설정하세요.
 
 PR 코드는 신뢰할 수 없는 입력으로 다룹니다. 분석 단계에는 GitHub 토큰을 넘기지 않고, 네트워크 도구와 저장소의 `.claude` 설정, 훅, MCP를 끕니다. 쓰기는 `.pr-map/`으로 제한합니다. 전체 지도는 실행의 artifact(`pr-map-viewer`)로 14일 동안 보관하고, PR 댓글에 실행 페이지 링크를 넣습니다.
 
