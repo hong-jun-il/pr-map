@@ -43,6 +43,10 @@ node -e '
   try { r = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); }
   catch { console.log("분석 결과를 읽지 못했습니다."); process.exit(1); }
   console.log(`분석 ${r.is_error ? "실패" : "종료"}: ${r.subtype ?? "unknown"} · 턴 ${r.num_turns ?? "?"} · 추정 비용 $${r.total_cost_usd ?? "?"} · 거부된 도구 호출 ${r.permission_denials?.length ?? 0}건`);
+  // 비용이 0이면 모델이 출력한 적이 없어 PR 내용이 섞일 수 없다. API 오류 원인을 보여준다.
+  if (r.is_error && !r.total_cost_usd) {
+    console.log(`API 오류: ${r.api_error_status ?? "상태 없음"} · ${String(r.result ?? "").replace(/\s+/g, " ").slice(0, 200)}`);
+  }
   process.exit(r.is_error ? 1 : 0);
 ' "$result" || summary=$?
 

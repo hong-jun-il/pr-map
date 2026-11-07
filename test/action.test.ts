@@ -40,6 +40,13 @@ console.log(JSON.stringify({ subtype: process.env.FAKE_CLAUDE_ERROR ? 'error_max
 `;
 
 describe("action.yml 권한 경계", () => {
+  it("분석 전에 하위 프로세스 격리를 준비하고, 토큰을 넘기지 않는다", () => {
+    const ids = steps.map((s) => s.id);
+    expect(ids.indexOf("sandbox")).toBeGreaterThanOrEqual(0);
+    expect(ids.indexOf("sandbox")).toBeLessThan(ids.indexOf("analyze"));
+    expect(step("sandbox").env).toBeUndefined();
+  });
+
   it("PR 코드를 읽는 분석 단계에는 GitHub 토큰을 넘기지 않는다", () => {
     const env = Object.keys(step("analyze").env!);
     expect(env).toContain("PR_MAP_API_KEY");
