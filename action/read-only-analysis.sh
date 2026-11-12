@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # analyze.sh가 읽는다. 에이전트는 코드를 읽고 지도를 답변으로만 낸다.
 # 파일 저장과 검증은 이 스크립트가 하므로 에이전트에 쓰기 권한을 주지 않는다.
+# script, api_key, run_agent 같은 값은 이 파일을 source로 읽는 analyze.sh가 정한다.
+# shellcheck disable=SC2154
 
 # 일회용 체크아웃에서 PR이 바꿀 수 있는 에이전트 설정과 지시문을 지운다.
 rm -rf .codex .agents .gemini .env

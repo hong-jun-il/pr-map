@@ -16195,7 +16195,8 @@ function fileDiff(root, base, head, file) {
 \uBC14\uC774\uB108\uB9AC \uD30C\uC77C\uC774\uB77C \uB0B4\uC6A9\uC744 \uC2E3\uC9C0 \uC54A\uC558\uB2E4.`;
   const paths = file.oldPath ? [file.oldPath, file.path] : [file.path];
   const diff = tryGit(root, "diff", "-M", "-U3", base, head, "--", ...paths);
-  if (diff === null) return `${title}
+  if (diff === null)
+    return `${title}
 \uBCC0\uACBD \uB0B4\uC6A9\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4. git diff\uB85C \uC77D\uB294\uB2E4.`;
   return `${title}
 ${formatDiffRows(parseUnifiedDiff(diff))}`;
@@ -16642,14 +16643,18 @@ function showStatus(root, provider) {
   const problem = actionProblem(action);
   if (problem) steps.push(`\uC124\uCE58 \uBD88\uAC00: ${problem}`);
   else if (workflow === "missing")
-    steps.push(`\uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 PR \uB9CC\uB4E4\uAE30: setup --install --provider ${provider}`);
+    steps.push(
+      `\uC6CC\uD06C\uD50C\uB85C \uC124\uCE58 PR \uB9CC\uB4E4\uAE30: setup --install --provider ${provider}`
+    );
   else if (workflow === "different")
     steps.push(
       `\uAE30\uC874 \uC6CC\uD06C\uD50C\uB85C\uB97C \uB36E\uC5B4\uC4F8\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD655\uC778: setup --install --force --provider ${provider}`
     );
   if (secret !== "registered") {
     if (gh === "ready" && hasEnvKey)
-      steps.push(`\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uB3D9\uC758 \uD544\uC694): setup --secret-from-env --provider ${provider}`);
+      steps.push(
+        `\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uB3D9\uC758 \uD544\uC694): setup --secret-from-env --provider ${provider}`
+      );
     else if (gh === "ready")
       steps.push(
         `\uC2DC\uD06C\uB9BF \uB4F1\uB85D(\uC0AC\uC6A9\uC790 \uD130\uBBF8\uB110\uC5D0\uC11C): gh secret set ${secretName} --repo ${repo}`
@@ -16927,7 +16932,17 @@ function apply(version) {
   const backup = `${target}.old-${process.pid}`;
   try {
     try {
-      git2(temp, "clone", "-q", "--depth", "1", "--branch", `v${version}`, REPO_URL, "src");
+      git2(
+        temp,
+        "clone",
+        "-q",
+        "--depth",
+        "1",
+        "--branch",
+        `v${version}`,
+        REPO_URL,
+        "src"
+      );
     } catch (err) {
       throw new CliError(
         `v${version}\uC744 \uB0B4\uB824\uBC1B\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.
@@ -16945,7 +16960,9 @@ ${err.stderr?.toString().trim() ?? ""}`.trim()
       (0, import_node_fs7.renameSync)(incoming, target);
     } catch (err) {
       (0, import_node_fs7.renameSync)(backup, target);
-      throw new CliError(`${parent}\uC5D0 \uC124\uCE58\uD558\uC9C0 \uBABB\uD574 \uC6D0\uB798 \uBC84\uC804\uC744 \uC720\uC9C0\uD569\uB2C8\uB2E4: ${err.message}`);
+      throw new CliError(
+        `${parent}\uC5D0 \uC124\uCE58\uD558\uC9C0 \uBABB\uD574 \uC6D0\uB798 \uBC84\uC804\uC744 \uC720\uC9C0\uD569\uB2C8\uB2E4: ${err.message}`
+      );
     }
     (0, import_node_fs7.rmSync)(backup, { recursive: true, force: true });
   } finally {
@@ -16960,7 +16977,9 @@ function cmdUpdate(opts) {
   try {
     latest = fetchLatest();
   } catch {
-    throw new CliError("\uCD5C\uC2E0 \uBC84\uC804\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB124\uD2B8\uC6CC\uD06C\uB97C \uD655\uC778\uD558\uC138\uC694.");
+    throw new CliError(
+      "\uCD5C\uC2E0 \uBC84\uC804\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB124\uD2B8\uC6CC\uD06C\uB97C \uD655\uC778\uD558\uC138\uC694."
+    );
   }
   console.log(`\uC124\uCE58 \uBC84\uC804: ${"0.1.0"}`);
   console.log(`\uC124\uCE58 \uC704\uCE58: ${skillDir()}`);
@@ -17310,7 +17329,9 @@ function main() {
     case "setup": {
       const provider = values.provider ?? "claude";
       if (!Object.hasOwn(PROVIDERS, provider))
-        throw new CliError("--provider\uC5D0\uB294 claude, codex, gemini \uC911 \uD558\uB098\uB97C \uC4F0\uC138\uC694.");
+        throw new CliError(
+          "--provider\uC5D0\uB294 claude, codex, gemini \uC911 \uD558\uB098\uB97C \uC4F0\uC138\uC694."
+        );
       return cmdSetup(root, {
         provider,
         install: !!values.install,

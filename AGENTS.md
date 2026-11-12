@@ -15,11 +15,13 @@ PR을 올리기 전에 아래를 실행합니다. CI도 같은 검사를 합니�
 
 ```bash
 npm run typecheck
+npm run lint
+npm run format:check
 npm test
 npm run build
 ```
 
-고친 파일은 `npx prettier --write <파일>`로 형식을 맞춥니다.
+고친 파일은 `npx prettier --write <파일>`로 형식을 맞춥니다. `action/`의 셸 스크립트를 고쳤으면 `shellcheck --severity=warning action/*.sh action/providers/*.sh`도 실행합니다. CI는 워크플로 파일을 actionlint로도 검사합니다.
 
 ## PR
 

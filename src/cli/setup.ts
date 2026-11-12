@@ -91,13 +91,22 @@ function workflowTemplate(provider: Provider): string {
     .replace("secrets.ANTHROPIC_API_KEY", `secrets.${PROVIDERS[provider]}`);
 }
 
-function workflowState(root: string, commit: string, provider: Provider): WorkflowState {
+function workflowState(
+  root: string,
+  commit: string,
+  provider: Provider,
+): WorkflowState {
   const existing = tryGit(root, "show", `${commit}:${WORKFLOW_PATH}`);
   if (existing === null) return "missing";
   return existing === workflowTemplate(provider) ? "current" : "different";
 }
 
-function secretState(root: string, repo: string, gh: GhState, secretName: string): SecretState {
+function secretState(
+  root: string,
+  repo: string,
+  gh: GhState,
+  secretName: string,
+): SecretState {
   if (gh !== "ready") return "unknown";
   try {
     const names = run(
@@ -159,14 +168,18 @@ function showStatus(root: string, provider: Provider): void {
   const problem = actionProblem(action);
   if (problem) steps.push(`설치 불가: ${problem}`);
   else if (workflow === "missing")
-    steps.push(`워크플로 설치 PR 만들기: setup --install --provider ${provider}`);
+    steps.push(
+      `워크플로 설치 PR 만들기: setup --install --provider ${provider}`,
+    );
   else if (workflow === "different")
     steps.push(
       `기존 워크플로를 덮어쓸지 사용자에게 확인: setup --install --force --provider ${provider}`,
     );
   if (secret !== "registered") {
     if (gh === "ready" && hasEnvKey)
-      steps.push(`시크릿 등록(사용자 동의 필요): setup --secret-from-env --provider ${provider}`);
+      steps.push(
+        `시크릿 등록(사용자 동의 필요): setup --secret-from-env --provider ${provider}`,
+      );
     else if (gh === "ready")
       steps.push(
         `시크릿 등록(사용자 터미널에서): gh secret set ${secretName} --repo ${repo}`,
@@ -181,7 +194,11 @@ function showStatus(root: string, provider: Provider): void {
 }
 
 /** 사용자의 체크아웃을 건드리지 않도록 임시 worktree에서 커밋해 올린다. */
-function pushWorkflowBranch(root: string, commit: string, provider: Provider): void {
+function pushWorkflowBranch(
+  root: string,
+  commit: string,
+  provider: Provider,
+): void {
   const dir = mkdtempSync(path.join(tmpdir(), "pr-map-setup-"));
   try {
     git(root, "worktree", "add", "-q", "--detach", dir, commit);
@@ -216,7 +233,12 @@ function pushWorkflowBranch(root: string, commit: string, provider: Provider): v
   }
 }
 
-function openInstallPr(root: string, repo: string, base: string, secretName: string): void {
+function openInstallPr(
+  root: string,
+  repo: string,
+  base: string,
+  secretName: string,
+): void {
   const manual = () =>
     console.log(`이 링크에서 PR을 만드세요: ${compareUrl(repo, base)}`);
   if (ghState(root) !== "ready") {

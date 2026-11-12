@@ -320,7 +320,7 @@ function MapScreen({ data }: { data: ViewerMapData }) {
       };
     });
     const size = { w: inner.offsetWidth, h: inner.offsetHeight };
-    const key = JSON.stringify([next, size], (_k, v) =>
+    const key = JSON.stringify([next, size], (_k, v: unknown) =>
       typeof v === "number" ? Math.round(v) : v,
     );
     if (key !== rectKey.current) {
@@ -541,7 +541,7 @@ function MapScreen({ data }: { data: ViewerMapData }) {
       window.setTimeout(() => {
         manual.current = true;
       }, 400);
-    document.fonts.ready.then(() => {
+    void document.fonts.ready.then(() => {
       fit();
       lock();
     });

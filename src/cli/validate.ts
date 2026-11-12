@@ -10,7 +10,7 @@ import type {
   TreeNode,
 } from "../shared/types";
 import { isTestPath } from "./classify";
-import { CodeIndex } from "./code";
+import type { CodeIndex } from "./code";
 
 export interface Problem {
   path: string;

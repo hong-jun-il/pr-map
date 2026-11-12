@@ -44,7 +44,8 @@ function fileDiff(
   if (file.binary) return `${title}\n바이너리 파일이라 내용을 싣지 않았다.`;
   const paths = file.oldPath ? [file.oldPath, file.path] : [file.path];
   const diff = tryGit(root, "diff", "-M", "-U3", base, head, "--", ...paths);
-  if (diff === null) return `${title}\n변경 내용을 읽지 못했다. git diff로 읽는다.`;
+  if (diff === null)
+    return `${title}\n변경 내용을 읽지 못했다. git diff로 읽는다.`;
   return `${title}\n${formatDiffRows(parseUnifiedDiff(diff))}`;
 }
 

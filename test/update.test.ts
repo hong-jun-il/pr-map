@@ -15,7 +15,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { compareVersions, latestFromTags } from "../src/cli/update";
 
 const SKILL = path.resolve("skill/pr-map");
-const VERSION = JSON.parse(readFileSync("package.json", "utf8")).version as string;
+const VERSION = JSON.parse(readFileSync("package.json", "utf8"))
+  .version as string;
 const NEXT = "99.0.0";
 
 describe("버전 비교", () => {
@@ -46,21 +47,41 @@ describe("update 명령", () => {
   const g = (cwd: string, ...args: string[]) =>
     execFileSync("git", args, { cwd, encoding: "utf8", env }).trim();
   const cli = (...args: string[]) => {
-    const r = spawnSync(process.execPath, [path.join(installed, "scripts/pr-map.js"), ...args], {
-      cwd: tmp,
-      env,
-      encoding: "utf8",
-    });
+    const r = spawnSync(
+      process.execPath,
+      [path.join(installed, "scripts/pr-map.js"), ...args],
+      {
+        cwd: tmp,
+        env,
+        encoding: "utf8",
+      },
+    );
     return { code: r.status, out: r.stdout + r.stderr };
   };
   const publishTag = (version: string, withScript = true) => {
     const work = path.join(tmp, `work-${version}`);
     mkdirSync(path.join(work, "skill/pr-map/scripts"), { recursive: true });
     writeFileSync(path.join(work, "skill/pr-map/SKILL.md"), `new ${version}\n`);
-    if (withScript) writeFileSync(path.join(work, "skill/pr-map/scripts/pr-map.js"), "// new\n");
+    if (withScript)
+      writeFileSync(
+        path.join(work, "skill/pr-map/scripts/pr-map.js"),
+        "// new\n",
+      );
     g(work, "init", "-q", "-b", "main");
     g(work, "add", "-A");
-    g(work, "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "release");
+    g(
+      work,
+      "-c",
+      "user.name=T",
+      "-c",
+      "user.email=t@example.com",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-q",
+      "-m",
+      "release",
+    );
     g(work, "tag", `v${version}`);
     g(work, "push", "-q", "--force", remote, `refs/tags/v${version}`);
   };
@@ -72,7 +93,10 @@ describe("update 명령", () => {
     remote = path.join(tmp, "remote.git");
     mkdirSync(remote);
     const gitconfig = path.join(tmp, "gitconfig");
-    writeFileSync(gitconfig, `[url "${remote}"]\n\tinsteadOf = https://github.com/hong-jun-il/pr-map.git\n`);
+    writeFileSync(
+      gitconfig,
+      `[url "${remote}"]\n\tinsteadOf = https://github.com/hong-jun-il/pr-map.git\n`,
+    );
     env = {
       ...process.env,
       GIT_CONFIG_GLOBAL: gitconfig,
@@ -106,7 +130,9 @@ describe("update 명령", () => {
     const { code, out } = cli("update", "--apply");
     expect(code, out).toBe(0);
     expect(out).toContain("새 세션부터 적용됩니다");
-    expect(readFileSync(path.join(installed, "SKILL.md"), "utf8")).toBe(`new ${NEXT}\n`);
+    expect(readFileSync(path.join(installed, "SKILL.md"), "utf8")).toBe(
+      `new ${NEXT}\n`,
+    );
     expect(readdirSync(path.dirname(installed))).toEqual(["pr-map"]);
   });
 
@@ -140,11 +166,15 @@ describe("update 명령", () => {
   describe("하루 한 번 확인과 알림", () => {
     let repo: string;
     const inRepo = (...args: string[]) => {
-      const r = spawnSync(process.execPath, [path.join(installed, "scripts/pr-map.js"), ...args], {
-        cwd: repo,
-        env,
-        encoding: "utf8",
-      });
+      const r = spawnSync(
+        process.execPath,
+        [path.join(installed, "scripts/pr-map.js"), ...args],
+        {
+          cwd: repo,
+          env,
+          encoding: "utf8",
+        },
+      );
       return { code: r.status, out: r.stdout + r.stderr };
     };
     const cacheFile = () => path.join(tmp, "cache/pr-map/update-check.json");
@@ -156,7 +186,19 @@ describe("update 명령", () => {
       g(repo, "remote", "add", "origin", "https://github.com/acme/api.git");
       writeFileSync(path.join(repo, "a.ts"), "export const a = 1\n");
       g(repo, "add", "-A");
-      g(repo, "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "base");
+      g(
+        repo,
+        "-c",
+        "user.name=T",
+        "-c",
+        "user.email=t@example.com",
+        "-c",
+        "commit.gpgsign=false",
+        "commit",
+        "-q",
+        "-m",
+        "base",
+      );
     });
 
     it("collect가 결과를 저장하고 view가 새 버전을 알린다", () => {
@@ -176,7 +218,10 @@ describe("update 명령", () => {
     });
 
     it("확인에 실패해도 collect는 성공한다", () => {
-      writeFileSync(env.GIT_CONFIG_GLOBAL!, `[url "${path.join(tmp, "없는곳.git")}"]\n\tinsteadOf = https://github.com/hong-jun-il/pr-map.git\n`);
+      writeFileSync(
+        env.GIT_CONFIG_GLOBAL!,
+        `[url "${path.join(tmp, "없는곳.git")}"]\n\tinsteadOf = https://github.com/hong-jun-il/pr-map.git\n`,
+      );
       const { code } = inRepo("collect", "--base", "main");
       expect(code).toBe(0);
       expect(JSON.parse(readFileSync(cacheFile(), "utf8")).latest).toBeNull();

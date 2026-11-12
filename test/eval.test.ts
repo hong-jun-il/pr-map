@@ -142,7 +142,7 @@ describe("scoreMap", () => {
     );
     expect(s.nodes).toBe(3);
     expect(s.unverified).toBe(1);
-    expect(s.behaviors[0].nodes).toEqual(["src/retry.ts#limit"]);
+    expect(s.behaviors[0]?.nodes).toEqual(["src/retry.ts#limit"]);
     expect(s.mustRecall).toBe(0.5);
   });
 
@@ -172,7 +172,7 @@ describe("scoreMap", () => {
         ],
       },
     );
-    expect(s.behaviors[0].found).toBe(true);
+    expect(s.behaviors[0]?.found).toBe(true);
   });
 });
 
@@ -193,7 +193,7 @@ describe("평가 케이스", () => {
     });
     input = JSON.parse(
       readFileSync(path.join(root, ".pr-map/input.json"), "utf8"),
-    );
+    ) as CollectInput;
   });
   afterAll(() => rmSync(root, { recursive: true, force: true }));
 
