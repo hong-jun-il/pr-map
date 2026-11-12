@@ -236,7 +236,7 @@ export function collect(cwd: string, opts: CollectOptions): CollectInput {
   const changedTests = unclassified.filter((f) => f.category === "test");
   writeText(
     diffPath(root),
-    buildDiffText(root, mergeBase, head, [...files, ...changedTests]),
+    buildDiffText(root, mergeBase, head, files, changedTests),
   );
   writeJson(statePath(root), { head, attempts: 0, errors: [] });
   excludeOutput(root);
