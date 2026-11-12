@@ -13,5 +13,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src", "test", "spec/*.json"]
+  "include": ["src", "test", "eval", "spec/*.json"],
+  "exclude": ["eval/cases"]
 }

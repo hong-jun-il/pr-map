@@ -1,0 +1,29 @@
+{
+  "description": "0원은 '무료'로 표시하고, 쓰지 않는 이전 가격 표시 함수를 지운다",
+  "behaviors": [
+    {
+      "id": "free-label",
+      "text": "가격이 0원이면 '무료'로 표시한다",
+      "change": "added",
+      "evidence": ["h:src/format.ts:2"],
+      "must": true
+    },
+    {
+      "id": "legacy-removed",
+      "text": "'KRW 금액' 형식으로 표시하던 이전 함수가 없어진다",
+      "change": "deleted",
+      "evidence": ["b:src/format.ts:5-7"],
+      "must": true
+    },
+    {
+      "id": "cart-total-free",
+      "text": "장바구니 합계가 0원이면 '합계 무료'로 보인다",
+      "change": "affected",
+      "evidence": ["h:src/cart.ts:5"],
+      "must": true
+    }
+  ],
+  "forbidden": [
+    "장바구니 코드가 바뀌었다고 쓰면 틀림 (코드는 그대로이고 결과만 달라진다)"
+  ]
+}

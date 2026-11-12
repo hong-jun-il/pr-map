@@ -1,0 +1,23 @@
+{
+  "description": "오래된 캐시는 다시 불러오고, 불러오기에 실패하면 캐시 삭제를 시도한 뒤 오류를 던진다",
+  "behaviors": [
+    {
+      "id": "stale-refetch",
+      "text": "캐시가 있어도 오래된 값이면 서버에서 다시 불러온다",
+      "change": "modified",
+      "evidence": ["b:src/profile.ts:6", "h:src/profile.ts:6"],
+      "must": true
+    },
+    {
+      "id": "fetch-fail-clear-cache",
+      "text": "불러오기에 실패하면 캐시 삭제를 시도하고 원래 오류를 다시 던진다",
+      "change": "added",
+      "evidence": ["h:src/profile.ts:11-13"],
+      "must": true
+    }
+  ],
+  "forbidden": [
+    "캐시가 반드시 지워진다고 쓰면 틀림 (삭제 실패는 무시한다)",
+    "실패하면 이전 캐시 값을 돌려준다고 쓰면 틀림 (오류를 다시 던진다)"
+  ]
+}
