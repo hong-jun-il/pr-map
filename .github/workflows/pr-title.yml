@@ -14,7 +14,7 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
           types='feat|fix|docs|refactor|test|chore|ci'
-          scopes='cli|viewer|action|skill|setup'
+          scopes='cli|viewer|action|skill|setup|eval'
           pattern="^($types)(\(($scopes)\))?!?: .+"
 
           if ! [[ "$TITLE" =~ $pattern ]]; then
