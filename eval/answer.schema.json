@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PR Map 평가 정답지",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "behaviors"],
+  "properties": {
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "이 PR이 무엇을 바꾸는지 한 문장. 로컬 케이스에서는 커밋 메시지로도 쓴다."
+    },
+    "github": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo", "pr", "head"],
+      "properties": {
+        "repo": { "type": "string", "pattern": "^[\\w.-]+/[\\w.-]+$" },
+        "pr": { "type": "integer", "minimum": 1 },
+        "head": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" }
+      }
+    },
+    "behaviors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "change", "evidence", "must"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "text": { "type": "string", "minLength": 1 },
+          "change": {
+            "enum": ["added", "deleted", "modified", "affected"]
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[hb]:.+:\\d+(-\\d+)?$"
+            }
+          },
+          "must": { "type": "boolean" }
+        }
+      }
+    },
+    "forbidden": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

@@ -1,3 +1,6 @@
 node_modules/
 .pr-map/
 out/
+
+# 평가 결과에는 분석한 코드 원문이 들어간다.
+eval/results/
