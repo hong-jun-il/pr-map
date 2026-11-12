@@ -1,0 +1,237 @@
+{
+  "description": "/ops 화면을 예시 데이터 기반의 성과 요약·8주 추이 화면으로 바꾸고, 기존 보안 알림 화면은 로그인 보호를 받는 /security로 옮긴다.",
+  "github": {
+    "repo": "soma-376/pulsemetry-frontend",
+    "pr": 30,
+    "head": "4dcb1ff8dc253b94a89908f585a2c8ab93bf1188"
+  },
+  "behaviors": [
+    {
+      "id": "ops-route-shows-performance",
+      "text": "/ops에 들어가면 → 보안 알림 화면 대신 성과 화면을 보여준다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/app/(dashboard)/ops/page.tsx:9",
+        "b:src/app/(dashboard)/ops/page.tsx:9"
+      ],
+      "must": true
+    },
+    {
+      "id": "security-route-shows-alerts",
+      "text": "/security에 들어가면 → 예전에 /ops에 있던 보안 알림 화면을 보여준다.",
+      "change": "added",
+      "evidence": ["h:src/app/(dashboard)/security/page.tsx:8-10"],
+      "must": true
+    },
+    {
+      "id": "security-route-protected",
+      "text": "/security와 그 하위 경로는 보호 경로로 분류되어 → 로그인하지 않았으면 /login으로, 온보딩을 마치지 않았으면 /onboarding으로 보낸다.",
+      "change": "modified",
+      "evidence": ["h:src/lib/route-access.ts:9"],
+      "must": true
+    },
+    {
+      "id": "proxy-checks-security-session",
+      "text": "/security 요청도 프록시의 세션 쿠키 검사를 거쳐 → 세션이 없으면 /login으로 리다이렉트한다.",
+      "change": "added",
+      "evidence": ["h:src/proxy.ts:45"],
+      "must": true
+    },
+    {
+      "id": "sidebar-performance-and-security-items",
+      "text": "사이드바의 '운영 · 보안' 항목 하나가 → '성과'(/ops)와 '보안'(/security) 두 항목으로 나뉜다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/components/layout/Sidebar.tsx:20-21",
+        "b:src/components/layout/Sidebar.tsx:20"
+      ],
+      "must": true
+    },
+    {
+      "id": "ops-header-shows-period-toolbar",
+      "text": "성과(/ops) 화면의 헤더에서도 → 개요·팀 분석처럼 기간 선택 도구를 보여준다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/components/layout/PageHeader.tsx:32",
+        "b:src/components/layout/PageHeader.tsx:31"
+      ],
+      "must": true
+    },
+    {
+      "id": "ops-path-has-period-filters",
+      "text": "경로가 /ops이면 → 기간 필터를 쓰는 화면으로 취급한다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/filter-query.ts:11-13",
+        "b:src/lib/filter-query.ts:11"
+      ],
+      "must": true
+    },
+    {
+      "id": "ops-url-period-params-applied",
+      "text": "/ops 주소에 startDate·endDate·compare가 있으면 → 기억해 둔 값 대신 주소의 값을 기간 조건으로 쓴다.",
+      "change": "affected",
+      "evidence": ["h:src/lib/filter-query.ts:66-69"],
+      "must": true
+    },
+    {
+      "id": "security-header-title",
+      "text": "보안 화면의 제목이 → '운영 · 보안'에서 '보안'으로 바뀐다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/components/security/SecurityContent.tsx:112",
+        "h:src/components/layout/PageHeader.tsx:9"
+      ],
+      "must": false
+    },
+    {
+      "id": "alerts-csv-screen-name",
+      "text": "보안 알림을 CSV로 내보내면 → '화면' 값이 '운영 · 보안'이 아니라 '보안'으로 적힌다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/csv-export.ts:580",
+        "b:src/lib/csv-export.ts:580"
+      ],
+      "must": true
+    },
+    {
+      "id": "performance-no-session-renders-nothing",
+      "text": "성과 화면에서 세션이 없으면 → 아무것도 그리지 않는다(안내는 상위 레이아웃이 맡는다).",
+      "change": "added",
+      "evidence": ["h:src/components/performance/PerformanceContent.tsx:42-44"],
+      "must": true
+    },
+    {
+      "id": "performance-data-is-sample-only",
+      "text": "성과 데이터를 조회하면 → 백엔드를 호출하지 않고 예시 데이터를 돌려주며, 조회가 취소된 상태면 예외를 던진다.",
+      "change": "added",
+      "evidence": ["h:src/lib/api/performance.ts:98-99"],
+      "must": true
+    },
+    {
+      "id": "sample-same-for-any-period",
+      "text": "기간이나 비교 조건을 바꿔도 → 예시 데이터의 수치는 같고 응답의 기간 정보만 바뀐다.",
+      "change": "added",
+      "evidence": ["h:src/mocks/performance.ts:150-154"],
+      "must": true
+    },
+    {
+      "id": "performance-auto-refresh",
+      "text": "자동 새로고침이 켜져 있으면 → 성과 데이터를 5분마다 다시 조회하고, 꺼져 있으면 주기 조회를 하지 않는다.",
+      "change": "added",
+      "evidence": ["h:src/components/performance/PerformanceContent.tsx:72-75"],
+      "must": false
+    },
+    {
+      "id": "performance-error-state-with-retry",
+      "text": "불러오기가 끝났는데 데이터가 없으면 → '성과를 불러오지 못했습니다' 안내와 다시 조회 버튼을 보여준다.",
+      "change": "added",
+      "evidence": [
+        "h:src/components/performance/PerformanceContent.tsx:123-129"
+      ],
+      "must": true
+    },
+    {
+      "id": "scope-initial-from-url",
+      "text": "주소의 scope 값이 정해진 범위(all·platform·payments·data·mobile) 중 하나면 → 그 범위로 시작하고, 없거나 모르는 값이면 전체로 시작한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/api/performance.ts:22-26",
+        "h:src/components/performance/PerformanceContent.tsx:84-85"
+      ],
+      "must": true
+    },
+    {
+      "id": "scope-change-updates-url",
+      "text": "범위를 바꾸면 → 페이지 이동 없이 주소의 scope만 바꾸고(전체면 scope를 지움) 기간 파라미터는 그대로 둔다.",
+      "change": "added",
+      "evidence": ["h:src/components/performance/PerformanceContent.tsx:54-59"],
+      "must": true
+    },
+    {
+      "id": "kpi-click-selects-trend-metric",
+      "text": "요약 카드를 누르면 → 아래 추이 그래프가 그 지표로 바뀌고, 처음에는 '완료한 작업'이 선택되어 있다.",
+      "change": "added",
+      "evidence": [
+        "h:src/components/performance/PerformanceKpiButton.tsx:19-20",
+        "h:src/components/performance/PerformanceContent.tsx:90"
+      ],
+      "must": true
+    },
+    {
+      "id": "compare-none-hides-delta",
+      "text": "비교 조건이 '없음'이면 → 카드와 추이 통계에서 증감과 이전 값을 보여주지 않는다.",
+      "change": "added",
+      "evidence": [
+        "h:src/components/performance/PerformanceContent.tsx:91",
+        "h:src/lib/metrics/performance.ts:281",
+        "h:src/lib/metrics/performance.ts:290"
+      ],
+      "must": true
+    },
+    {
+      "id": "missing-value-shows-dash",
+      "text": "지표 계산에 필요한 현재·이전 값 중 하나라도 null이면 → 카드 값은 단위 없이 '-'로 표시한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/metrics/performance.ts:193-194",
+        "h:src/lib/metrics/performance.ts:286-287"
+      ],
+      "must": true
+    },
+    {
+      "id": "zero-denominator-yields-zero",
+      "text": "완료 티켓이 0건이면 평균 사이클 비용을, 구성원이 0명이면 활성 비율을 → 나누지 않고 0으로 계산한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/metrics/performance.ts:209-210",
+        "h:src/lib/metrics/performance.ts:220-221"
+      ],
+      "must": true
+    },
+    {
+      "id": "delta-previous-zero-or-percent-point",
+      "text": "백분율 지표의 증감은 %p 차이로 표시하고, 그 밖의 지표는 이전 값이 0이면 → 증감을 표시하지 않는다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/metrics/performance.ts:245-246",
+        "h:src/lib/metrics/performance.ts:252-253"
+      ],
+      "must": true
+    },
+    {
+      "id": "trend-unavailable-message",
+      "text": "선택한 지표의 값이 없거나, 팀 범위인데 전체 평균을 구할 수 없으면 → 그래프 대신 '추이를 계산할 수 없습니다' 안내를 보여준다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/metrics/performance-trend.ts:126",
+        "h:src/components/performance/PerformanceContent.tsx:138-144"
+      ],
+      "must": true
+    },
+    {
+      "id": "team-scope-shows-org-average",
+      "text": "범위가 팀이면 → 전체 평균을 점선으로 함께 그리고 '전체 평균 대비' 통계를 보여주며, 전체 범위면 평균선 없이 주별 범위 통계를 보여준다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/metrics/performance-trend.ts:124-125",
+        "h:src/lib/metrics/performance-trend.ts:153-156",
+        "h:src/components/performance/PerformanceTrendChart.tsx:71-73"
+      ],
+      "must": true
+    },
+    {
+      "id": "org-average-per-team-for-counts",
+      "text": "건수·금액 지표의 전체 평균은 조직 합계를 팀 수(4)로 나눈 값이고 → 비율·시간 지표는 조직 값을 그대로 쓴다.",
+      "change": "added",
+      "evidence": ["h:src/lib/metrics/performance-trend.ts:58-60"],
+      "must": true
+    }
+  ],
+  "forbidden": [
+    "/ops로 들어오면 /security로 리다이렉트된다고 쓰면 틀림 (/ops는 그대로 남아 성과 화면을 보여주고, 보안 알림은 별도 경로 /security에 생겼다)",
+    "성과 데이터를 백엔드 API에서 가져오고 실패하면 예시 데이터로 대체한다고 쓰면 틀림 (백엔드 호출이 없고 예시 데이터가 유일한 출처다)",
+    "기간을 바꾸면 성과 수치가 그 기간에 맞게 다시 계산된다고 쓰면 틀림 (예시 데이터는 기간과 무관하게 같은 값이다)",
+    "선택한 지표도 주소에 남아 새로고침 뒤 복원된다고 쓰면 틀림 (주소에 남는 것은 범위(scope)뿐이고 지표는 화면 상태에만 있다)"
+  ]
+}

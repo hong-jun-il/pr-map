@@ -1,0 +1,98 @@
+{
+  "description": "추이 차트에서 서버가 사용 기록 0건이라고 알려 준 구간을 값 확인 불가 구간과 구분해 '관측된 사용 없음'으로 표시한다.",
+  "github": {
+    "repo": "soma-376/pulsemetry-frontend",
+    "pr": 59,
+    "head": "f993fefb4ff2b8073916e4585d145d8f83de3a62"
+  },
+  "behaviors": [
+    {
+      "id": "no-usage-criterion",
+      "text": "사용 기록 수가 정확히 0이고, 결손 사유가 없거나 '데이터 없음'뿐이며, 값이 있거나 사유가 하나라도 있으면 → 그 구간을 '사용 기록 없음'으로 판정한다. 기록 수를 모르거나(null) 단가 누락 같은 다른 사유가 섞이면 판정하지 않는다.",
+      "change": "added",
+      "evidence": ["h:src/lib/metrics/trend-feedback.ts:13-17"],
+      "must": true
+    },
+    {
+      "id": "no-usage-note",
+      "text": "사용 기록 없음으로 표시된 구간이면 → 값이 비어 있어도 '근거 부족' 안내 대신 '이 구간에 관측된 사용 기록이 없습니다'를 보여 주고, 누적 차트에서 값이 있으면 '이전까지의 누적값을 유지합니다'를 덧붙인다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/metrics/trend-feedback.ts:69-73",
+        "b:src/lib/metrics/trend-feedback.ts:54"
+      ],
+      "must": true
+    },
+    {
+      "id": "gap-label-no-usage",
+      "text": "어떤 구간에서 값이 빈 계열이 모두 사용 기록 없음이면 → 음영 구간 이름이 '확인 불가' 대신 '관측된 사용 없음'(모든 계열이 빈 경우) 또는 '일부 사용 기록 없음'(일부 계열만 빈 경우)이 된다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/metrics/trend-feedback.ts:127-134",
+        "b:src/lib/metrics/trend-feedback.ts:108-109"
+      ],
+      "must": true
+    },
+    {
+      "id": "gap-label-mixed",
+      "text": "값이 빈 계열 중 사용 기록 없음이 아닌 것이 하나라도 있으면 → 여전히 '확인 불가' 이름을 쓰되, 진짜 결손인 계열 수만 세므로 모든 계열이 비었어도 일부가 사용 기록 없음이면 '일부 값 확인 불가'가 된다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/metrics/trend-feedback.ts:129",
+        "h:src/lib/metrics/trend-feedback.ts:135-139",
+        "b:src/lib/metrics/trend-feedback.ts:111-115"
+      ],
+      "must": false
+    },
+    {
+      "id": "badge-ignores-no-usage",
+      "text": "빈 값이나 부분 집계 상태가 사용 기록 없음 구간에만 있으면 → 차트의 '일부 구간 확인 불가'·'일부 집계' 배지를 띄우지 않는다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/metrics/trend-feedback.ts:150-159",
+        "h:src/lib/metrics/trend-feedback.ts:163",
+        "b:src/lib/metrics/trend-feedback.ts:126"
+      ],
+      "must": true
+    },
+    {
+      "id": "overview-no-usage",
+      "text": "개요 차트의 자동 구간에서 사용 기록이 0건이면 → 그 구간을 사용 기록 없음으로 표시하고 결손 사유 문구를 비운다. 확인된 금액을 보여 주는 중이면 확인된 금액 기준으로 판정한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/metrics/overview-presentation.ts:378-387",
+        "h:src/lib/metrics/overview-presentation.ts:443",
+        "b:src/lib/metrics/overview-presentation.ts:431"
+      ],
+      "must": true
+    },
+    {
+      "id": "teams-no-usage",
+      "text": "팀 추이의 자동 구간에서 선택한 축(금액·토큰·세션)의 누적값에 다른 결손 없이 사용 기록이 0건이면 → 사용 기록 없음으로 표시하고 사유 문구를 비운다. 날짜 단위 데이터는 항상 해당 없음으로 둔다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/metrics/teams-presentation.ts:235",
+        "h:src/lib/metrics/teams-presentation.ts:244-246",
+        "h:src/lib/metrics/teams-presentation.ts:267",
+        "b:src/lib/metrics/teams-presentation.ts:243"
+      ],
+      "must": true
+    },
+    {
+      "id": "teams-known-and-empty-no-usage",
+      "text": "팀의 '확인된 금액' 추이와 팀이 하나도 없을 때 쓰는 빈 차트에서도 자동 구간의 사용 기록이 0건이면 → 사용 기록 없음으로 표시한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/metrics/teams-presentation.ts:641-650",
+        "h:src/lib/metrics/teams-presentation.ts:791-798"
+      ],
+      "must": false
+    }
+  ],
+  "forbidden": [
+    "사용 기록 없는 구간의 값을 0으로 채운다고 쓰면 틀림 (값은 그대로 두고 안내 문구와 음영 이름, 배지만 바꾼다)",
+    "사용 기록이 0건이면 단가 누락 같은 다른 결손도 '사용 없음'으로 덮는다고 쓰면 틀림 (사유가 '데이터 없음'뿐일 때만 판정한다)",
+    "사용 기록 수를 알 수 없는 구간(null)도 '관측된 사용 없음'으로 표시한다고 쓰면 틀림 (기록 수가 정확히 0일 때만이다)",
+    "날짜 단위 추이에도 사용 기록 없음 표시가 적용된다고 쓰면 틀림 (자동 구간 데이터에서만 계산하고 날짜 단위는 항상 false다)"
+  ]
+}

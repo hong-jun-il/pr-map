@@ -1,0 +1,207 @@
+{
+  "description": "환경 변수로 명시적으로 켰을 때만 서버의 트레이스·지표·로그를 OTLP 수집기로 보내고, 화면 렌더링 오류용 대체 화면과 standalone 서버 시작 스크립트를 추가한다.",
+  "github": {
+    "repo": "soma-376/pulsemetry-frontend",
+    "pr": 29,
+    "head": "c8732465524f2468b1956b7fc44ae1d74245bcda"
+  },
+  "behaviors": [
+    {
+      "id": "register-starts-telemetry-only-when-opted-in",
+      "text": "서버가 Node.js 런타임이고 OTEL_SDK_DISABLED가 정확히 \"false\"일 때만 → 서버 시작 시 계측을 시작하고, 그 밖에는 아무것도 하지 않는다.",
+      "change": "added",
+      "evidence": ["h:src/instrumentation.ts:4-10"],
+      "must": true
+    },
+    {
+      "id": "request-error-recorded-only-when-opted-in",
+      "text": "요청 처리 중 오류가 났을 때 같은 조건(Node.js 런타임, OTEL_SDK_DISABLED=\"false\")이면 → 오류를 로그로 기록하고, 아니면 기록하지 않는다.",
+      "change": "added",
+      "evidence": ["h:src/instrumentation.ts:18-24"],
+      "must": true
+    },
+    {
+      "id": "config-off-by-default",
+      "text": "OTEL_SDK_DISABLED가 \"false\"가 아니면(설정하지 않은 경우 포함) → 계측 설정은 null이 되어 계측이 꺼진 상태로 남는다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/config.ts:3"],
+      "must": true
+    },
+    {
+      "id": "config-missing-env-throws",
+      "text": "계측을 켰는데 OTEL_DEPLOYMENT_ENVIRONMENT나 OTEL_EXPORTER_OTLP_ENDPOINT가 비어 있으면 → 오류를 던진다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/config.ts:5-11"],
+      "must": true
+    },
+    {
+      "id": "config-non-http-endpoint-throws",
+      "text": "수집기 주소가 http나 https가 아니면 → 오류를 던진다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/config.ts:13-16"],
+      "must": true
+    },
+    {
+      "id": "start-telemetry-once",
+      "text": "계측이 이미 시작된 상태에서 다시 시작을 요청하면 → 새로 만들지 않고 기존 SDK를 그대로 돌려준다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/server.ts:23"],
+      "must": true
+    },
+    {
+      "id": "start-telemetry-skips-when-disabled",
+      "text": "계측 설정이 null이면 → SDK를 만들지 않고 바로 끝낸다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/server.ts:24-25"],
+      "must": true
+    },
+    {
+      "id": "exports-traces-metrics-logs",
+      "text": "계측이 시작되면 → 트레이스·지표·로그를 수집기 주소의 /v1/traces, /v1/metrics, /v1/logs로 각각 보내고 전송은 3초 안에 끝나지 않으면 포기한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/telemetry/server.ts:44-47",
+        "h:src/lib/telemetry/server.ts:52-55",
+        "h:src/lib/telemetry/server.ts:62-65"
+      ],
+      "must": true
+    },
+    {
+      "id": "always-sample-requests",
+      "text": "들어온 요청의 traceparent에 샘플링 표시가 꺼져 있어도 → 모든 요청을 기록한다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/server.ts:38-40"],
+      "must": false
+    },
+    {
+      "id": "console-output-preserved-and-forwarded",
+      "text": "계측이 켜진 뒤 console.debug/log/info/warn/error를 호출하면 → 원래대로 터미널에 출력하고, 같은 내용을 색상 코드 없이 로그로도 보낸다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/telemetry/logging.ts:27-28",
+        "h:src/lib/telemetry/logging.ts:33-38"
+      ],
+      "must": true
+    },
+    {
+      "id": "console-capture-skips-reentrant-or-suppressed",
+      "text": "로그를 보내는 도중 다시 console이 호출되거나 추적이 억제된 구간이면 → 터미널 출력만 하고 로그로는 보내지 않는다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/logging.ts:29"],
+      "must": true
+    },
+    {
+      "id": "console-capture-swallows-emit-failure",
+      "text": "로그를 보내다 예외가 나면 → 예외를 삼키고 console 호출은 정상적으로 끝난다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/logging.ts:48-52"],
+      "must": true
+    },
+    {
+      "id": "console-error-arg-adds-exception-fields",
+      "text": "console 인자에 Error 객체가 있으면 → 로그에 오류 이름·메시지·스택을 함께 붙인다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/telemetry/logging.ts:32",
+        "h:src/lib/telemetry/logging.ts:41-45"
+      ],
+      "must": false
+    },
+    {
+      "id": "request-error-log-fields",
+      "text": "요청 오류를 기록할 때 → ERROR 로그에 요청 메서드, 라우트 경로, 라우트 종류만 넣고 헤더·쿼리·본문은 넣지 않는다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/logging.ts:63-71"],
+      "must": true
+    },
+    {
+      "id": "request-error-log-failure-swallowed",
+      "text": "요청 오류 로그를 남기다 예외가 나면 → 예외를 삼키고 조용히 넘어간다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/logging.ts:79-81"],
+      "must": true
+    },
+    {
+      "id": "request-metric-only-outer-server-span",
+      "text": "끝난 스팬이 Next.js의 가장 바깥 요청 스팬(SERVER 종류, BaseServer.handleRequest)이 아니면 → 요청 시간 지표에 넣지 않는다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/request-metrics.ts:14-19"],
+      "must": true
+    },
+    {
+      "id": "request-metric-invalid-status-skipped",
+      "text": "스팬의 응답 상태 코드가 정수가 아니거나 100~599를 벗어나면 → 요청 시간 지표에 넣지 않는다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/request-metrics.ts:20-24"],
+      "must": true
+    },
+    {
+      "id": "request-metric-unknown-method-other",
+      "text": "요청 메서드가 표준 HTTP 메서드가 아니면 → 지표의 메서드 값을 OTHER로 기록한다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/request-metrics.ts:29-35"],
+      "must": false
+    },
+    {
+      "id": "request-metric-records-duration",
+      "text": "조건을 통과한 요청 스팬이 끝나면 → 걸린 시간(초)을 메서드와 상태 코드 두 가지 라벨만 붙여 기록한다.",
+      "change": "added",
+      "evidence": ["h:src/lib/telemetry/request-metrics.ts:45-48"],
+      "must": true
+    },
+    {
+      "id": "standalone-missing-build-exits",
+      "text": "npm start 때 standalone 빌드의 server.js가 없으면 → 빌드를 먼저 하라는 안내를 출력하고 종료 코드 1로 끝낸다.",
+      "change": "added",
+      "evidence": ["h:scripts/start-standalone.mjs:16-23"],
+      "must": true
+    },
+    {
+      "id": "standalone-copies-assets-then-starts",
+      "text": "server.js가 있으면 → 정적 파일과 public 폴더를 standalone 폴더로 복사한 뒤 서버를 실행한다.",
+      "change": "added",
+      "evidence": ["h:scripts/start-standalone.mjs:26-33"],
+      "must": true
+    },
+    {
+      "id": "dist-dir-from-env",
+      "text": "NEXT_DIST_DIR 환경 변수가 있으면 → 빌드 결과 폴더로 그 값을 쓰고, 없으면 .next를 쓴다.",
+      "change": "added",
+      "evidence": ["h:next.config.ts:6", "h:scripts/start-standalone.mjs:11"],
+      "must": false
+    },
+    {
+      "id": "dashboard-error-keeps-layout",
+      "text": "대시보드 본문을 그리다 예외가 나면 → 공통 레이아웃은 그대로 두고 본문 자리에 오류 안내와 다시 시도 버튼을 보여준다.",
+      "change": "added",
+      "evidence": ["h:src/app/(dashboard)/error.tsx:7-11"],
+      "must": true
+    },
+    {
+      "id": "global-error-own-document-and-theme",
+      "text": "루트 레이아웃까지 실패하면 → 자체 html 문서로 오류 화면을 그리고, 저장된 테마가 light나 dark면 그 테마를, 아니면 시스템 테마를 적용한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/app/global-error.tsx:17-27",
+        "h:src/app/global-error.tsx:31-39"
+      ],
+      "must": true
+    },
+    {
+      "id": "render-error-retry-and-home",
+      "text": "오류 화면에서 다시 시도를 누르면 → 재시도가 진행되는 동안 버튼을 로딩 상태로 보여주고, 처음으로를 누르면 → 폼 GET 요청으로 / 를 새 문서로 연다.",
+      "change": "added",
+      "evidence": [
+        "h:src/components/ui/RenderErrorState.tsx:14-15",
+        "h:src/components/ui/RenderErrorState.tsx:19-25"
+      ],
+      "must": true
+    }
+  ],
+  "forbidden": [
+    "OTEL_SDK_DISABLED를 설정하지 않으면 계측이 기본으로 켜진다고 쓰면 틀림 (값이 정확히 \"false\"일 때만 켜지고, 설정하지 않으면 꺼져 있다)",
+    "console 로그를 수집기로 보내는 대신 터미널에는 더 이상 출력하지 않는다고 쓰면 틀림 (원래 console 함수를 먼저 호출하므로 터미널 출력은 그대로다)",
+    "로그 전송이 실패하면 요청이 실패하거나 오류가 다시 던져진다고 쓰면 틀림 (console 수집과 요청 오류 기록 모두 예외를 삼킨다)",
+    "요청 시간 지표에 URL 경로나 라우트가 라벨로 붙는다고 쓰면 틀림 (라벨은 HTTP 메서드와 상태 코드뿐이다)"
+  ]
+}

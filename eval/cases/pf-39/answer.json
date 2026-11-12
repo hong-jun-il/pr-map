@@ -1,0 +1,72 @@
+{
+  "description": "세션 갱신에 성공한 뒤 이어지는 조회가 실패해도, 오류 응답에 새 세션 쿠키를 실어 보내도록 바꾼다.",
+  "github": {
+    "repo": "soma-376/pulsemetry-frontend",
+    "pr": 39,
+    "head": "f7392caa8b0761878c12aaac7cd1b6e35caa5463"
+  },
+  "behaviors": [
+    {
+      "id": "proxy-failure-after-refresh-keeps-cookie",
+      "text": "업무 API 중계 요청에서 만료 직전 토큰을 갱신한 뒤 백엔드 호출이 연결 오류로 실패하면 → 503 오류 응답에 새 세션 쿠키가 함께 내려간다(이전에는 쿠키 없이 오류만 내려가 새 토큰을 잃었다).",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/server/bff.ts:285-287",
+        "h:src/lib/server/bff.ts:516-526",
+        "h:src/lib/server/bff.ts:587-589",
+        "b:src/lib/server/bff.ts:503-507"
+      ],
+      "must": true
+    },
+    {
+      "id": "session-check-failure-after-refresh-keeps-cookie",
+      "text": "로그인 상태 확인(auth/session) 요청에서 토큰을 갱신한 뒤 사용자 정보 조회가 연결 오류로 실패하면 → 오류 응답에 새 세션 쿠키가 실린다(이전에는 조회가 정상 반환된 뒤에만 새 세션을 기억했다).",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/server/bff.ts:471-477",
+        "b:src/lib/server/bff.ts:463-464"
+      ],
+      "must": true
+    },
+    {
+      "id": "retry-after-401-failure-keeps-cookie",
+      "text": "백엔드가 401을 돌려줘 토큰을 갱신하고 다시 호출했는데 그 재호출이 연결 오류로 실패하면 → 오류 응답에 갱신된 세션 쿠키가 실린다.",
+      "change": "added",
+      "evidence": ["h:src/lib/server/bff.ts:294-298"],
+      "must": true
+    },
+    {
+      "id": "reused-refresh-result-keeps-cookie",
+      "text": "다른 요청이 이미 갱신해 둔 세션을 옛 쿠키로 들어온 요청이 이어받은 뒤 추가 갱신이나 조회가 실패하면 → 이어받은 새 세션의 쿠키가 오류 응답에 실린다.",
+      "change": "added",
+      "evidence": ["h:src/lib/server/bff.ts:282-284"],
+      "must": true
+    },
+    {
+      "id": "final-401-still-no-cookie",
+      "text": "토큰을 갱신해 다시 호출했는데도 백엔드가 또 401을 돌려주면 → 세션을 무효로 처리하고 401 응답에는 새 쿠키를 싣지 않는다(새 세션을 기억해 두었더라도 401은 예외다).",
+      "change": "affected",
+      "evidence": [
+        "h:src/lib/server/bff.ts:300-303",
+        "h:src/lib/server/bff.ts:587-589"
+      ],
+      "must": true
+    },
+    {
+      "id": "proxy-redirect-after-refresh-keeps-cookie",
+      "text": "업무 API 중계 요청에서 토큰을 갱신한 뒤 백엔드가 3xx 응답을 돌려주면 → 502 오류 응답에도 새 세션 쿠키가 실린다(이전에는 중계 경로의 오류 응답에 쿠키가 실리지 않았다).",
+      "change": "affected",
+      "evidence": [
+        "h:src/lib/server/bff.ts:304-305",
+        "h:src/lib/server/bff.ts:587-589"
+      ],
+      "must": false
+    }
+  ],
+  "forbidden": [
+    "갱신 뒤 최종 응답이 401이어도 새 쿠키를 내려보낸다고 쓰면 틀림 (오류 처리부는 상태가 401이면 쿠키를 쓰지 않는다)",
+    "토큰 갱신 자체가 실패해도 쿠키를 다시 쓴다고 쓰면 틀림 (새 세션을 확보한 경우에만 기억하며, 갱신이 실패하면 기억할 세션이 없다)",
+    "연결 실패 시 백엔드 호출을 자동으로 다시 시도한다고 쓰면 틀림 (재호출은 기존처럼 401일 때 한 번뿐이고, 이 PR은 쿠키 전달만 바꾼다)",
+    "성공 응답에서 쿠키를 쓰는 방식이 바뀌었다고 쓰면 틀림 (성공 경로는 기존처럼 갱신 여부를 보고 쿠키를 쓴다)"
+  ]
+}
