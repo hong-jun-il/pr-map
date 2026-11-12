@@ -15021,6 +15021,17 @@ function writeText(file, text) {
 function writeJson(file, value) {
   writeText(file, JSON.stringify(value, null, 2) + "\n");
 }
+function compactJson(value) {
+  const lines = Object.entries(value).map(
+    ([key, v]) => Array.isArray(v) && v.length ? `${JSON.stringify(key)}: [
+${v.map((x) => `  ${JSON.stringify(x)}`).join(",\n")}
+]` : `${JSON.stringify(key)}: ${JSON.stringify(v)}`
+  );
+  return `{
+${lines.join(",\n")}
+}
+`;
+}
 
 // src/cli/validate.ts
 var import__ = __toESM(require__(), 1);
@@ -16374,7 +16385,7 @@ function collect(cwd, opts) {
     candidates: collectCandidates(root, mergeBase, head, files),
     previous: readJsonIfExists(mapPath(root))
   };
-  writeJson(inputPath(root), input);
+  writeText(inputPath(root), compactJson(input));
   const changedTests = unclassified.filter((f) => f.category === "test");
   writeText(
     diffPath(root),

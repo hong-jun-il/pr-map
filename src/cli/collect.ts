@@ -6,6 +6,7 @@ import { classify, readConfig } from "./classify";
 import { buildDiffText } from "./diff";
 import { CliError, git, originRepo, repoRoot, run, tryGit } from "./git";
 import {
+  compactJson,
   diffPath,
   inputPath,
   mapPath,
@@ -229,7 +230,8 @@ export function collect(cwd: string, opts: CollectOptions): CollectInput {
     previous: readJsonIfExists<PrMap>(mapPath(root)),
   };
 
-  writeJson(inputPath(root), input);
+  // 분석 에이전트가 턴마다 다시 읽는 파일이라 짧게 쓴다.
+  writeText(inputPath(root), compactJson(input));
   // 변경 파일과, 근거로 연결할 수 있는 바뀐 테스트의 내용을 한 파일로 모은다.
   const changedTests = unclassified.filter((f) => f.category === "test");
   writeText(
