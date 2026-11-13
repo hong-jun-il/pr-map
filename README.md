@@ -121,6 +121,7 @@ PR에 달린 댓글은 다른 사람도 보는 기록이라 자동으로 지우�
 npm install
 npm test            # 번들 후 전체 테스트
 npm run typecheck
+npm run lint        # ESLint (타입 정보를 쓰는 규칙 포함)
 npm run demo        # 시안의 예시 PR을 임시 저장소로 만들어 뷰어를 연다 (--stale: 새 커밋 상태)
 ```
 

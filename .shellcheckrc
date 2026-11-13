@@ -1,0 +1,2 @@
+# source로 읽는 파일을 따라가서 검사한다.
+external-sources=true

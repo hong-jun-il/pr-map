@@ -2,6 +2,8 @@
 # analyze.sh가 읽는다. Gemini CLI는 셸 명령에서 키를 숨기는 방법이 확실하지 않아 셸을 아예 허용하지 않는다.
 #   정책: 파일 읽기와 검색만 허용하고 나머지 도구는 모두 거부한다.
 #   HOME: 설정과 정책을 임시 폴더로 고정한다.
+# script, api_key, run_agent 같은 값은 이 파일을 source로 읽는 analyze.sh가 정한다.
+# shellcheck disable=SC2154
 gemini_home=$(mktemp -d)
 mkdir -p "$gemini_home/.gemini/policies"
 cat > "$gemini_home/.gemini/policies/pr-map.toml" <<'EOF'

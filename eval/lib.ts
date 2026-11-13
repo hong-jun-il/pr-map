@@ -66,7 +66,7 @@ export function parseRef(text: string): Ref {
   const end = m[4] ? Number(m[4]) : start;
   if (start < 1 || end < start)
     throw new Error(`줄 범위가 잘못되었습니다: ${text}`);
-  return { side: m[1] === "h" ? "head" : "base", path: m[2], start, end };
+  return { side: m[1] === "h" ? "head" : "base", path: m[2]!, start, end };
 }
 
 export function overlaps(a: Ref, b: Ref): boolean {
@@ -225,7 +225,7 @@ export function baselineNodes(out: BaselineOutput): FlatNode[] {
     let badRefs = 0;
     for (const e of b.evidence ?? []) {
       try {
-        refs.push(parseRef(String(e).trim().split(/\s+/)[0]));
+        refs.push(parseRef(String(e).trim().split(/\s+/)[0] ?? ""));
       } catch {
         badRefs++;
       }

@@ -37,7 +37,7 @@ const claudeJudge: Judge = (rubric, prompt, schema) =>
       [
         "-p",
         "--model",
-        values.model!,
+        values.model,
         "--system-prompt",
         rubric,
         "--tools",
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
           loadCase(name).answer,
           claudeJudge,
           {
-            model: values.model!,
+            model: values.model,
             votes: Number(values.votes),
             chunkSize: Number(values["chunk-size"]),
             concurrency: Number(values.concurrency),

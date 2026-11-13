@@ -15,6 +15,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import type { CollectInput, PrMap } from "../src/shared/types";
 import { buildEvidence } from "./evidence";
+import { readStream, type ClaudeResult, type Trace } from "./trace";
 import {
   baselineNodes,
   changedLineCoverage,
@@ -45,9 +46,9 @@ const { values } = parseArgs({
   },
 });
 
-const baseline = values.baseline!;
+const baseline = values.baseline;
 const label = values.label ?? (baseline ? "baseline" : "current");
-const skillDir = path.resolve(values.skill!);
+const skillDir = path.resolve(values.skill);
 const script = path.join(skillDir, "scripts", "pr-map.js");
 const runs = Number(values.runs);
 if (!existsSync(script)) {
@@ -140,20 +141,12 @@ ${input.files.map((f) => `- ${f.path} (${f.status})`).join("\n")}
 ${GUARD}`;
 }
 
-interface ClaudeResult {
-  is_error?: boolean;
-  subtype?: string;
-  num_turns?: number;
-  duration_ms?: number;
-  total_cost_usd?: number;
-  usage?: Record<string, number>;
-  modelUsage?: Record<string, unknown>;
-  result?: string;
-  permission_denials?: unknown[];
-}
-
 /** 액션(action/providers/claude.sh)과 같은 권한으로 분석한다. */
-function analyze(root: string, prompt: string): ClaudeResult | null {
+function analyze(
+  root: string,
+  prompt: string,
+  out: string,
+): ClaudeResult | null {
   const r = spawnSync(
     "claude",
     [
@@ -163,14 +156,16 @@ function analyze(root: string, prompt: string): ClaudeResult | null {
       "--safe-mode",
       "--strict-mcp-config",
       "--model",
-      values.model!,
+      values.model,
       "--max-turns",
-      values["max-turns"]!,
+      values["max-turns"],
       "--max-budget-usd",
-      values["max-budget-usd"]!,
+      values["max-budget-usd"],
       "--no-session-persistence",
+      // 턴마다 무엇을 읽고 썼는지 남기려고 이벤트를 줄 단위로 받는다.
       "--output-format",
-      "json",
+      "stream-json",
+      "--verbose",
       "--permission-prompts",
       "none",
       ...(baseline ? [] : ["--add-dir", skillDir]),
@@ -188,14 +183,35 @@ function analyze(root: string, prompt: string): ClaudeResult | null {
     ],
     { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
   );
-  try {
-    return JSON.parse(r.stdout) as ClaudeResult;
-  } catch {
+  const { result, trace } = readStream(r.stdout ?? "");
+  writeFileSync(
+    path.join(out, "trace.json"),
+    JSON.stringify(trace, null, 2) + "\n",
+  );
+  if (!result)
     console.error(
       `  분석 결과를 읽지 못했습니다: ${(r.stderr ?? "").slice(0, 300)}`,
     );
-    return null;
-  }
+  return result;
+}
+
+/** 테스트 연결이 붙은 노드 수, 연결 수, validate가 지운 연결 수 */
+function testLinks(mapFile: string, traceFile: string) {
+  const map = readJson<PrMap>(mapFile);
+  const trace = readJson<Trace>(traceFile);
+  let nodes = 0;
+  let links = 0;
+  const walk = (list: PrMap["files"][number]["tree"] | undefined) => {
+    for (const n of list ?? []) {
+      if (n.tests?.length) {
+        nodes++;
+        links += n.tests.length;
+      }
+      walk(n.children);
+    }
+  };
+  for (const f of map?.files ?? []) walk(f.tree);
+  return { nodes, links, pruned: trace?.prunedTests ?? 0 };
 }
 
 interface Outcome {
@@ -224,7 +240,7 @@ function skillOutcome(root: string, out: string): Outcome {
     passed,
     // collect가 0으로 두고, 검증에 실패할 때마다 1씩 오른다.
     fixes: state?.attempts ?? null,
-    nodes: passed ? flattenNodes(map!) : [],
+    nodes: passed ? flattenNodes(map) : [],
     summary: map?.pr?.summary ?? "",
   };
 }
@@ -258,6 +274,7 @@ function runCase(c: EvalCase, n: number): void {
     const result = analyze(
       root,
       baseline ? baselinePrompt(input) : skillPrompt(),
+      out,
     );
     const o = baseline ? baselineOutcome(root, out) : skillOutcome(root, out);
     const evidence = o.passed
@@ -302,6 +319,10 @@ function runCase(c: EvalCase, n: number): void {
         },
       },
       validate: { passed: o.passed, fixes: o.fixes },
+      tests: testLinks(
+        path.join(out, "pr-map.json"),
+        path.join(out, "trace.json"),
+      ),
       evidenceCheck: evidence?.check ?? null,
       coverage: o.passed ? changedLineCoverage(root, input, o.nodes) : null,
       score: o.passed ? scoreNodes(o.nodes, c.answer) : null,

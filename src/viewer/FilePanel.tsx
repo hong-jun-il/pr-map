@@ -343,7 +343,7 @@ function TreeRowView({
       : evidence.length;
   const items = [
     ...evidence.slice(0, limit).map((ev, i) => ({
-      ev: ev as PanelEvidence,
+      ev: ev,
       i,
       label: String(i + 1).padStart(2, "0"),
     })),
@@ -506,7 +506,7 @@ interface Props extends CommentProps {
 }
 
 export function FilePanel(p: Props) {
-  const { data, file: f } = p;
+  const { file: f } = p;
   const comments: CommentProps = {
     drafts: p.drafts,
     composer: p.composer,

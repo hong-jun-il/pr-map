@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# 같은 PR에 새 커밋이 올라오면 앞선 실행을 멈춘다. main 실행은 멈추지 않는다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   typecheck:
     name: 타입 검사
@@ -17,9 +22,45 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-      - run: npm ci
+      # 설치된 node_modules를 통째로 캐시한다. package-lock.json이 같으면 설치를 건너뛴다.
+      - id: deps
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm run typecheck
+
+  lint:
+    name: 린트와 형식 검사
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # 설치된 node_modules를 통째로 캐시한다. package-lock.json이 같으면 설치를 건너뛴다.
+      - id: deps
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  scripts:
+    name: 셸 스크립트와 워크플로 검사
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # 러너에 설치된 shellcheck를 쓴다. 설정은 .shellcheckrc에 있다.
+      - name: shellcheck
+        run: shellcheck --severity=warning action/*.sh action/providers/*.sh
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
 
   test:
     name: 테스트
@@ -29,8 +70,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-      - run: npm ci
+      # 설치된 node_modules를 통째로 캐시한다. package-lock.json이 같으면 설치를 건너뛴다.
+      - id: deps
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm test
 
   build-output:
@@ -41,8 +88,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-      - run: npm ci
+      # 설치된 node_modules를 통째로 캐시한다. package-lock.json이 같으면 설치를 건너뛴다.
+      - id: deps
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm run build
       # 스킬과 액션은 커밋된 skill/pr-map을 그대로 실행한다.
       # src/나 spec/만 고치고 빌드하지 않으면 실제 동작이 바뀌지 않는다.
