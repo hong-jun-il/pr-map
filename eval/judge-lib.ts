@@ -174,7 +174,7 @@ export function majority<T>(votes: T[], order: T[]): T {
   const top = [...counts.entries()].find(([, c]) => c > votes.length / 2);
   if (top) return top[0];
   const sorted = [...votes].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  return sorted[Math.floor(sorted.length / 2)];
+  return sorted[Math.floor(sorted.length / 2)] as T;
 }
 
 export interface JudgeResult {
@@ -212,7 +212,7 @@ function shuffled<T>(items: T[], seed: number): T[] {
   for (let i = a.length - 1; i > 0; i--) {
     s = (s * 9301 + 49297) % 233280;
     const j = Math.floor((s / 233280) * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [a[i], a[j]] = [a[j] as T, a[i] as T];
   }
   return a;
 }
@@ -221,13 +221,14 @@ async function pool<T>(
   tasks: (() => Promise<T>)[],
   size: number,
 ): Promise<T[]> {
-  const out: T[] = new Array(tasks.length);
+  const out = new Array<T>(tasks.length);
   let next = 0;
   await Promise.all(
     Array.from({ length: Math.min(size, tasks.length) }, async () => {
       while (next < tasks.length) {
+        const task = tasks[next];
         const i = next++;
-        out[i] = await tasks[i]();
+        if (task) out[i] = await task();
       }
     }),
   );

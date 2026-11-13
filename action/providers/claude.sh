@@ -4,6 +4,8 @@
 #   --tools: 네트워크 도구를 뺀다.
 #   --permission-prompts none: 허용 목록 밖의 호출은 승인 요청 없이 거부한다.
 #   SUBPROCESS_ENV_SCRUB: Bash 하위 프로세스에 API 키를 넘기지 않는다.
+# script, api_key, run_agent 같은 값은 이 파일을 source로 읽는 analyze.sh가 정한다.
+# shellcheck disable=SC2154
 
 # 상대 경로 규칙은 에이전트가 cd하면 기준이 옮겨져 결과 파일 쓰기까지 막는다. 절대 경로로 고정한다.
 workspace=$(pwd -P)

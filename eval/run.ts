@@ -15,6 +15,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import type { CollectInput, PrMap } from "../src/shared/types";
 import { buildEvidence } from "./evidence";
+import { readStream, type ClaudeResult, type Trace } from "./trace";
 import {
   baselineNodes,
   changedLineCoverage,
@@ -45,9 +46,9 @@ const { values } = parseArgs({
   },
 });
 
-const baseline = values.baseline!;
+const baseline = values.baseline;
 const label = values.label ?? (baseline ? "baseline" : "current");
-const skillDir = path.resolve(values.skill!);
+const skillDir = path.resolve(values.skill);
 const script = path.join(skillDir, "scripts", "pr-map.js");
 const runs = Number(values.runs);
 if (!existsSync(script)) {
@@ -140,88 +141,6 @@ ${input.files.map((f) => `- ${f.path} (${f.status})`).join("\n")}
 ${GUARD}`;
 }
 
-interface ClaudeResult {
-  is_error?: boolean;
-  subtype?: string;
-  num_turns?: number;
-  duration_ms?: number;
-  total_cost_usd?: number;
-  usage?: Record<string, number>;
-  modelUsage?: Record<string, unknown>;
-  result?: string;
-  permission_denials?: unknown[];
-}
-
-export interface TraceTurn {
-  tools: { name: string; target: string }[];
-  /** 이 턴에 모델이 읽은 입력 토큰 (캐시 읽기·쓰기 포함) */
-  context: number;
-  output: number;
-}
-
-export interface Trace {
-  turns: TraceTurn[];
-  /** validate가 지운 테스트 연결 수 */
-  prunedTests: number;
-  validateRuns: number;
-}
-
-/** stream-json 출력에서 턴별 도구 호출과 토큰, 마지막 결과를 뽑는다. */
-export function readStream(stdout: string): {
-  result: ClaudeResult | null;
-  trace: Trace;
-} {
-  const byId = new Map<string, TraceTurn>();
-  const trace: Trace = { turns: [], prunedTests: 0, validateRuns: 0 };
-  let result: ClaudeResult | null = null;
-  for (const line of stdout.split("\n")) {
-    if (!line.trim()) continue;
-    let ev: Record<string, any>;
-    try {
-      ev = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (ev.type === "result") result = ev as ClaudeResult;
-    if (ev.type === "assistant") {
-      // 한 응답이 내용 블록마다 따로 올 수 있어 응답 id로 묶는다.
-      const id = String(ev.message?.id ?? byId.size);
-      let turn = byId.get(id);
-      if (!turn) {
-        turn = { tools: [], context: 0, output: 0 };
-        byId.set(id, turn);
-        trace.turns.push(turn);
-      }
-      const u = ev.message?.usage ?? {};
-      turn.context =
-        (u.input_tokens ?? 0) +
-        (u.cache_read_input_tokens ?? 0) +
-        (u.cache_creation_input_tokens ?? 0);
-      turn.output = Math.max(turn.output, u.output_tokens ?? 0);
-      for (const c of ev.message?.content ?? []) {
-        if (c.type !== "tool_use") continue;
-        const input = c.input ?? {};
-        const target = String(
-          input.file_path ?? input.command ?? input.pattern ?? "",
-        );
-        turn.tools.push({ name: c.name, target: target.slice(0, 160) });
-        if (/pr-map\.js validate/.test(target)) trace.validateRuns++;
-      }
-    }
-    if (ev.type === "user" && Array.isArray(ev.message?.content)) {
-      for (const c of ev.message.content) {
-        if (c.type !== "tool_result") continue;
-        const text =
-          typeof c.content === "string"
-            ? c.content
-            : (c.content ?? []).map((x: any) => x.text ?? "").join("\n");
-        trace.prunedTests += (text.match(/^테스트 연결 제거:/gm) ?? []).length;
-      }
-    }
-  }
-  return { result, trace };
-}
-
 /** 액션(action/providers/claude.sh)과 같은 권한으로 분석한다. */
 function analyze(
   root: string,
@@ -237,11 +156,11 @@ function analyze(
       "--safe-mode",
       "--strict-mcp-config",
       "--model",
-      values.model!,
+      values.model,
       "--max-turns",
-      values["max-turns"]!,
+      values["max-turns"],
       "--max-budget-usd",
-      values["max-budget-usd"]!,
+      values["max-budget-usd"],
       "--no-session-persistence",
       // 턴마다 무엇을 읽고 썼는지 남기려고 이벤트를 줄 단위로 받는다.
       "--output-format",
@@ -321,7 +240,7 @@ function skillOutcome(root: string, out: string): Outcome {
     passed,
     // collect가 0으로 두고, 검증에 실패할 때마다 1씩 오른다.
     fixes: state?.attempts ?? null,
-    nodes: passed ? flattenNodes(map!) : [],
+    nodes: passed ? flattenNodes(map) : [],
     summary: map?.pr?.summary ?? "",
   };
 }

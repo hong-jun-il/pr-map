@@ -42,7 +42,7 @@ describe("baselineNodes", () => {
       change: "modified",
       badRefs: 2,
     });
-    expect(nodes[0].refs).toEqual([
+    expect(nodes[0]?.refs).toEqual([
       { side: "head", path: "src/retry.ts", start: 3, end: 3 },
     ]);
     expect(nodes[1]).toMatchObject({ change: "modified", file: "(근거 없음)" });
@@ -77,14 +77,14 @@ describe("buildEvidence", () => {
       ],
     });
     const e = buildEvidence(root, input, nodes, "요약");
-    expect(e.nodes[0].refs[0]).toMatchObject({
+    expect(e.nodes[0]?.refs[0]).toMatchObject({
       valid: true,
       touchesChange: true,
     });
-    expect(e.nodes[0].refs[0].lines).toContain(
+    expect(e.nodes[0]?.refs[0]?.lines).toContain(
       "> 3 + export const MAX_ATTEMPTS = 5;",
     );
-    expect(e.nodes[1].refs[0]).toMatchObject({ valid: false, lines: [] });
+    expect(e.nodes[1]?.refs[0]).toMatchObject({ valid: false, lines: [] });
     expect(e.check).toEqual({
       refs: 3,
       invalidRefs: 1,
@@ -224,6 +224,7 @@ describe("judgeRun", () => {
     let calls = 0;
     let nodeCalls = 0;
     const seen: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/require-await -- Judge 형식에 맞춘 가짜 채점기
     const judge: Judge = async (_rubric, prompt, schema) => {
       calls++;
       seen.push(prompt);
@@ -290,14 +291,14 @@ describe("judgeRun", () => {
   });
 
   it("호출이 실패하면 판정 없이 실패 횟수를 남긴다", async () => {
-    const r = await judgeRun(evidence, answer, async () => null, {
+    const r = await judgeRun(evidence, answer, () => Promise.resolve(null), {
       model: "fake",
       votes: 1,
       chunkSize: 12,
       concurrency: 2,
     });
     expect(r.failedCalls).toBe(2);
-    expect(r.nodes[0].verdict).toBeNull();
+    expect(r.nodes[0]?.verdict).toBeNull();
     expect(summarize(r).precision).toBe(0);
   });
 });

@@ -14,7 +14,7 @@ import type {
   ViewerFile,
   ViewerMapData,
 } from "../shared/types";
-import { CodeIndex } from "./code";
+import type { CodeIndex } from "./code";
 import { buildComment } from "./comment";
 import {
   commentPath,

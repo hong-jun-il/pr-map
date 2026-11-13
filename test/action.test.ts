@@ -328,7 +328,10 @@ if (args.includes('--output-last-message')) fs.writeFileSync(args[args.indexOf('
 else console.log(JSON.stringify({ response: answer }));
 `;
     const calls = (log: string) =>
-      readFileSync(log, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+      readFileSync(log, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l));
     const env = (extra = {}) => ({
       PR_MAP_PROVIDER: provider,
       FAKE_AGENT_LOG: path.join(path.dirname(fx.root), "agent.log"),
@@ -371,12 +374,20 @@ else console.log(JSON.stringify({ response: answer }));
       runStep("analyze", env());
       const [call] = calls(env().FAKE_AGENT_LOG);
       if (provider === "codex") {
-        expect(call.args).toEqual(expect.arrayContaining(["--sandbox", "read-only"]));
-        const config = readFileSync(path.join(call.codexHome, "config.toml"), "utf8");
+        expect(call.args).toEqual(
+          expect.arrayContaining(["--sandbox", "read-only"]),
+        );
+        const config = readFileSync(
+          path.join(call.codexHome, "config.toml"),
+          "utf8",
+        );
         expect(config).toContain('inherit = "none"');
         expect(config).toContain('trust_level = "untrusted"');
       } else {
-        const policy = readFileSync(path.join(call.home, ".gemini/policies/pr-map.toml"), "utf8");
+        const policy = readFileSync(
+          path.join(call.home, ".gemini/policies/pr-map.toml"),
+          "utf8",
+        );
         expect(policy).toContain('toolName = "*"');
         expect(policy).toContain('decision = "deny"');
         expect(policy).not.toContain("run_shell_command");
