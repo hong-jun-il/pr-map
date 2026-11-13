@@ -4,6 +4,8 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { PrMap } from "../src/shared/types";
+import type { EvidenceFile } from "./evidence";
+import { summarize, type JudgeResult, type JudgeSummary } from "./judge-lib";
 import { loadCase, RESULTS_DIR, scoreMap } from "./lib";
 
 interface Metrics {
@@ -21,6 +23,15 @@ interface Metrics {
   };
   validate: { passed: boolean; fixes: number | null };
   coverage: { covered: number; total: number } | null;
+  evidenceCheck?: EvidenceFile["check"] | null;
+  score?: {
+    mustRecall: number;
+    recall: number;
+    changeAccuracy: number | null;
+    nodes: number;
+    unverified: number;
+    extraNodes: string[];
+  } | null;
 }
 
 export interface Row {
@@ -39,6 +50,10 @@ export interface Row {
   costUsd: number | null;
   turns: number | null;
   durationSec: number;
+  invalidRefRate: number | null;
+  changeMismatchRate: number | null;
+  judge: JudgeSummary | null;
+  judgeCostUsd: number | null;
 }
 
 const dirs = (p: string) =>
@@ -65,10 +80,18 @@ function readRows(label: string): Row[] {
       if (!existsSync(mFile)) continue;
       const m = JSON.parse(readFileSync(mFile, "utf8")) as Metrics;
       const mapFile = path.join(dir, "pr-map.json");
+      // 지도가 있으면 지금 정답지로 다시 채점하고, 스킬 없는 실행은 저장된 점수를 쓴다.
       const s =
         m.validate.passed && existsSync(mapFile)
           ? scoreMap(JSON.parse(readFileSync(mapFile, "utf8")) as PrMap, answer)
-          : null;
+          : m.validate.passed
+            ? (m.score ?? null)
+            : null;
+      const judgeFile = path.join(dir, "judge.json");
+      const judged = existsSync(judgeFile)
+        ? (JSON.parse(readFileSync(judgeFile, "utf8")) as JudgeResult)
+        : null;
+      const ec = m.evidenceCheck ?? null;
       const t = m.agent.tokens;
       rows.push({
         label,
@@ -88,6 +111,10 @@ function readRows(label: string): Row[] {
         costUsd: m.agent.costUsd,
         turns: m.agent.turns,
         durationSec: m.agent.durationSec,
+        invalidRefRate: ec?.refs ? ec.invalidRefs / ec.refs : null,
+        changeMismatchRate: ec?.nodes ? ec.changeMismatch / ec.nodes : null,
+        judge: judged ? summarize(judged) : null,
+        judgeCostUsd: judged?.costUsd ?? null,
       });
     }
   }
@@ -114,12 +141,43 @@ const num = (x: ReturnType<typeof meanSd>, digits = 0) =>
     ? `${x.mean.toLocaleString("en-US", { maximumFractionDigits: digits })} ± ${x.sd.toLocaleString("en-US", { maximumFractionDigits: digits })}`
     : "-";
 
+const rate = (
+  j: JudgeSummary | null,
+  k: "partial" | "wrong" | "unsupported",
+) => (j && j.judged ? j[k] / j.judged : null);
+
 const COLUMNS: [string, (rs: Row[]) => string][] = [
   ["실행", (rs) => String(rs.length)],
   ["검증 통과", (rs) => pct(meanSd(rs.map((r) => (r.passed ? 1 : 0))))],
   ["수정 횟수", (rs) => num(meanSd(rs.map((r) => r.fixes)), 1)],
-  ["필수 동작 재현율", (rs) => pct(meanSd(rs.map((r) => r.mustRecall)))],
-  ["전체 재현율", (rs) => pct(meanSd(rs.map((r) => r.recall)))],
+  ["근거 줄 오류", (rs) => pct(meanSd(rs.map((r) => r.invalidRefRate)))],
+  [
+    "상태·근거 불일치",
+    (rs) => pct(meanSd(rs.map((r) => r.changeMismatchRate))),
+  ],
+  [
+    "정밀도 (맞음)",
+    (rs) => pct(meanSd(rs.map((r) => r.judge?.precision ?? null))),
+  ],
+  ["일부 맞음", (rs) => pct(meanSd(rs.map((r) => rate(r.judge, "partial"))))],
+  ["틀림", (rs) => pct(meanSd(rs.map((r) => rate(r.judge, "wrong"))))],
+  [
+    "근거 불일치",
+    (rs) => pct(meanSd(rs.map((r) => rate(r.judge, "unsupported")))),
+  ],
+  [
+    "필수 동작 재현율 (뜻까지)",
+    (rs) => pct(meanSd(rs.map((r) => r.judge?.strictMustRecall ?? null))),
+  ],
+  [
+    "틀린 주장 수",
+    (rs) => num(meanSd(rs.map((r) => r.judge?.forbiddenViolations ?? null)), 1),
+  ],
+  [
+    "필수 동작 재현율 (줄 겹침)",
+    (rs) => pct(meanSd(rs.map((r) => r.mustRecall))),
+  ],
+  ["전체 재현율 (줄 겹침)", (rs) => pct(meanSd(rs.map((r) => r.recall)))],
   ["상태 일치", (rs) => pct(meanSd(rs.map((r) => r.changeAccuracy)))],
   ["변경 줄 커버리지", (rs) => pct(meanSd(rs.map((r) => r.coverage)))],
   ["강등 비율", (rs) => pct(meanSd(rs.map((r) => r.unverifiedRate)))],
@@ -129,6 +187,7 @@ const COLUMNS: [string, (rs: Row[]) => string][] = [
   ["추정 비용($)", (rs) => num(meanSd(rs.map((r) => r.costUsd)), 3)],
   ["턴", (rs) => num(meanSd(rs.map((r) => r.turns)), 1)],
   ["시간(초)", (rs) => num(meanSd(rs.map((r) => r.durationSec)))],
+  ["채점 비용($)", (rs) => num(meanSd(rs.map((r) => r.judgeCostUsd)), 3)],
 ];
 
 function table(title: string, groups: [string, Row[]][]): string {
@@ -161,7 +220,7 @@ function main(): void {
   const parts = [
     "## PR Map 평가 결과",
     "",
-    "값은 평균 ± 표준편차입니다. 재현율과 상태 일치는 근거 줄이 겹치는지로만 판정하며, 설명 문장의 뜻은 채점하지 않았습니다.",
+    "값은 평균 ± 표준편차입니다. 정밀도, 일부 맞음, 틀림, 근거 불일치, 뜻까지 본 재현율, 틀린 주장 수는 채점 모델의 판정이고, 나머지는 규칙으로 계산한 값입니다. 채점하지 않은 실행은 -로 표시합니다.",
     "",
     table("전체", byLabel),
   ];

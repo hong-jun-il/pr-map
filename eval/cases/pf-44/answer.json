@@ -1,0 +1,178 @@
+{
+  "description": "BFF가 dev 환경에서 등록한 localhost 출처의 교차 출처 요청을 CORS로 받아 주고, 브라우저는 환경변수로 지정한 원격 BFF 주소로 쿠키를 붙여 요청할 수 있게 된다.",
+  "github": {
+    "repo": "soma-376/pulsemetry-frontend",
+    "pr": 44,
+    "head": "e51618bdd07d89a3f891ba7f87d80820a1f500db"
+  },
+  "behaviors": [
+    {
+      "id": "preflight-allowed",
+      "text": "허용된 출처가 허용된 메서드와 헤더로 사전 요청(OPTIONS)을 보내고 요청 헤더 목록에 x-pulsemetry-request가 들어 있으면 → 204와 함께 허용 메서드·헤더·출처·자격증명 CORS 헤더를 돌려준다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/server/bff-origin.ts:57-66",
+        "h:src/lib/server/bff-origin.ts:69-70",
+        "h:src/lib/server/bff.ts:517"
+      ],
+      "must": true
+    },
+    {
+      "id": "preflight-rejected",
+      "text": "사전 요청의 출처가 허용 목록에 없거나, 메서드가 목록 밖이거나, 목록에 없는 헤더(예: authorization)를 요청하거나, x-pulsemetry-request를 요청하지 않으면 → CORS 헤더 없이 403을 돌려준다.",
+      "change": "added",
+      "evidence": ["h:src/lib/server/bff-origin.ts:57-68"],
+      "must": true
+    },
+    {
+      "id": "cors-on-actual-response",
+      "text": "실제 요청의 Origin이 기본 출처이거나 등록된 localhost 출처이면 → 성공·실패 응답 모두에 Access-Control-Allow-Origin(그 출처), 자격증명 허용, 노출 헤더가 붙고, 그 외 출처면 Vary: Origin만 붙는다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/server/bff-origin.ts:38-46",
+        "h:src/lib/server/bff.ts:518"
+      ],
+      "must": true
+    },
+    {
+      "id": "local-origin-passes-check",
+      "text": "요청의 Origin이 등록된 localhost 출처이면 → 전에는 기본 출처와 달라서 403이었지만 이제 출처 검사를 통과한다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/server/bff.ts:107",
+        "b:src/lib/server/bff.ts:104",
+        "h:src/lib/server/bff-origin.ts:28-29"
+      ],
+      "must": true
+    },
+    {
+      "id": "cross-site-only-for-local",
+      "text": "Sec-Fetch-Site가 cross-site인 요청은 → Origin이 등록된 localhost 출처일 때만 통과하고, Origin이 없거나 기본 출처여도 403이다(전에는 cross-site면 무조건 403).",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/server/bff.ts:108-109",
+        "b:src/lib/server/bff.ts:105",
+        "h:src/lib/server/bff-origin.ts:81-82"
+      ],
+      "must": true
+    },
+    {
+      "id": "write-request-needs-allowed-origin",
+      "text": "GET·HEAD가 아닌 요청은 → Origin이 기본 출처이거나 등록된 localhost 출처여야 하고, Origin이 없거나 다른 출처면 403이다(전에는 기본 출처만 허용).",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/server/bff.ts:112-115",
+        "b:src/lib/server/bff.ts:108"
+      ],
+      "must": true
+    },
+    {
+      "id": "token-callback-matches-request-origin",
+      "text": "로그인 토큰 교환에서 redirect_uri가 '요청 Origin + /auth/callback'과 정확히 같지 않으면(예: localhost에서 보냈는데 기본 출처 콜백을 넣음) → 입력 검증에 걸려 400이 된다. 전에는 기본 출처 콜백 하나만 허용했다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/server/bff.ts:340-347",
+        "b:src/lib/server/bff.ts:333",
+        "h:src/lib/server/bff-origin.ts:83-84"
+      ],
+      "must": true
+    },
+    {
+      "id": "local-origins-dev-only",
+      "text": "localhost 허용 목록이 비어 있지 않은데 환경이 dev가 아니면 → BFF 생성 단계에서 오류가 난다.",
+      "change": "added",
+      "evidence": ["h:src/lib/server/bff-origin.ts:9-10"],
+      "must": true
+    },
+    {
+      "id": "local-origin-must-be-exact-localhost",
+      "text": "허용 목록의 값이 호스트가 localhost가 아니거나 경로·쿼리·계정 정보가 붙었거나 origin 표기와 글자가 다르면 → BFF 생성 단계에서 오류가 난다.",
+      "change": "added",
+      "evidence": ["h:src/lib/server/bff-origin.ts:13-25"],
+      "must": true
+    },
+    {
+      "id": "runtime-passes-local-origins",
+      "text": "BFF_LOCAL_ORIGINS 환경변수가 있으면 → 쉼표로 나눠 다듬은 목록과 세션 환경 값을 BFF 생성에 넘긴다.",
+      "change": "added",
+      "evidence": ["h:src/lib/server/bff.ts:554-557"],
+      "must": false
+    },
+    {
+      "id": "route-handles-options",
+      "text": "라우트에 OPTIONS 요청이 오면 → BFF 본체(세션 저장소 연결)를 만들지 않고 출처 정책만으로 사전 요청에 답한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/app/api/bff/[...path]/route.ts:8-9",
+        "h:src/app/api/bff/[...path]/route.ts:29"
+      ],
+      "must": true
+    },
+    {
+      "id": "route-503-gets-cors",
+      "text": "BFF 준비나 처리에서 예외가 나 503을 돌려줄 때 → CORS 헤더를 붙여 보내고, 출처 정책을 만들다 또 실패하면 CORS 헤더 없는 503을 그대로 보낸다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/app/api/bff/[...path]/route.ts:21-25",
+        "b:src/app/api/bff/[...path]/route.ts:9"
+      ],
+      "must": true
+    },
+    {
+      "id": "bff-fetch-forces-cookie-and-headers",
+      "text": "브라우저가 bffFetch로 요청하면 → 호출자가 넣은 Authorization 헤더는 지우고 X-Pulsemetry-Request: 1을 넣으며 credentials를 include로 강제한다.",
+      "change": "added",
+      "evidence": ["h:src/lib/api/bff-fetch.ts:5-11"],
+      "must": true
+    },
+    {
+      "id": "bff-url-remote-or-same-origin",
+      "text": "NEXT_PUBLIC_BFF_ORIGIN이 설정돼 있으면 → 그 출처를 붙인 절대 주소로 요청하고, 비어 있으면 경로를 그대로 써서 같은 출처로 요청한다.",
+      "change": "added",
+      "evidence": [
+        "h:src/lib/api/bff-url.ts:5-6",
+        "h:src/lib/api/bff-url.ts:17"
+      ],
+      "must": true
+    },
+    {
+      "id": "bff-url-rejects-bad-path",
+      "text": "경로가 /api/bff/로 시작하지 않거나 역슬래시가 들어 있으면 → 요청을 보내지 않고 오류를 던진다.",
+      "change": "added",
+      "evidence": ["h:src/lib/api/bff-url.ts:3-4"],
+      "must": false
+    },
+    {
+      "id": "bff-url-rejects-bad-origin",
+      "text": "NEXT_PUBLIC_BFF_ORIGIN이 http(s)가 아니거나 계정 정보·경로·쿼리·해시가 붙어 있으면 → 오류를 던진다.",
+      "change": "added",
+      "evidence": ["h:src/lib/api/bff-url.ts:8-16"],
+      "must": false
+    },
+    {
+      "id": "session-calls-use-bff-fetch",
+      "text": "세션 복구·토큰 교환·업무 요청·로그아웃은 → 같은 출처 전용(credentials: same-origin) 요청 대신 bffFetch를 거쳐 원격 BFF에도 쿠키를 붙여 보낸다.",
+      "change": "modified",
+      "evidence": [
+        "h:src/lib/api/session.ts:89",
+        "b:src/lib/api/session.ts:94-96",
+        "h:src/lib/api/session.ts:242",
+        "b:src/lib/api/session.ts:250-254"
+      ],
+      "must": true
+    },
+    {
+      "id": "org-discovery-uses-bff-fetch",
+      "text": "이메일로 조직을 찾는 요청도 → bffFetch를 거쳐 보낸다.",
+      "change": "modified",
+      "evidence": ["h:src/lib/oidc.ts:39", "b:src/lib/oidc.ts:44"],
+      "must": false
+    }
+  ],
+  "forbidden": [
+    "세션 쿠키의 SameSite 속성을 None으로 바꿨다고 쓰면 틀림 (쿠키를 만드는 session-cookie.ts는 이 PR에서 바뀌지 않았고 여전히 SameSite=Lax다)",
+    "prod 환경에서도 localhost 출처를 허용할 수 있다고 쓰면 틀림 (dev가 아닌 환경에서 목록을 주면 생성 단계에서 오류가 난다)",
+    "기본 출처에서 온 요청은 Sec-Fetch-Site가 cross-site여도 통과한다고 쓰면 틀림 (cross-site 예외는 등록된 localhost 출처에만 적용된다)",
+    "사전 요청이 통과하면 실제 요청은 X-Pulsemetry-Request 헤더 없이도 처리된다고 쓰면 틀림 (실제 요청은 여전히 이 헤더가 없으면 403이다)"
+  ]
+}

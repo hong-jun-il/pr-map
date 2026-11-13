@@ -124,7 +124,7 @@ function git(cwd: string, ...args: string[]): string {
 export function prepareRepo(c: EvalCase): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "pr-map-eval-")));
   if (c.answer.github) {
-    const { repo } = c.answer.github;
+    const { repo, pr, head } = c.answer.github;
     git(
       tmpdir(),
       "clone",
@@ -133,6 +133,9 @@ export function prepareRepo(c: EvalCase): string {
       `https://github.com/${repo}.git`,
       root,
     );
+    // 작업 트리가 분석 커밋과 같아야 줄 번호가 파일과 맞는다.
+    git(root, "fetch", "--quiet", "origin", `refs/pull/${pr}/head`);
+    git(root, "checkout", "--quiet", "--detach", head);
     return root;
   }
   const env = [
@@ -161,39 +164,85 @@ export function prepareRepo(c: EvalCase): string {
   return root;
 }
 
-interface FlatNode {
+export interface FlatNode {
   file: string;
   id: string;
+  text: string;
   change: NodeChange;
   unverified: boolean;
+  /** 정답과 짝지을 때 쓰는 근거. affectedBy 근거를 포함한다. */
   refs: Ref[];
+  /** 노드 자신의 근거 */
+  ownRefs: Ref[];
+  affectedBy?: string;
+  /** 읽지 못한 근거 문자열 수 (스킬 없는 실행에서만 생긴다) */
+  badRefs?: number;
 }
+
+const toRef = ({ side, path: p, start, end }: Ref): Ref => ({
+  side,
+  path: p,
+  start,
+  end,
+});
 
 export function flattenNodes(map: PrMap): FlatNode[] {
   const out: FlatNode[] = [];
   const walk = (file: string, nodes: TreeNode[] | undefined) => {
     for (const n of nodes ?? []) {
       // validate를 통과한 지도만 근거가 객체로 펼쳐져 있다.
-      const refs = [...(n.evidence ?? []), ...(n.affectedBy?.evidence ?? [])]
-        .filter((e) => typeof e === "object" && e !== null)
-        .map(({ side, path: p, start, end }) => ({
-          side,
-          path: p,
-          start,
-          end,
-        }));
+      const isRef = (e: unknown) => typeof e === "object" && e !== null;
+      const ownRefs = (n.evidence ?? []).filter(isRef).map(toRef);
+      const cause = (n.affectedBy?.evidence ?? []).filter(isRef).map(toRef);
       out.push({
         file,
         id: n.id,
+        text: n.text,
         change: n.change,
         unverified: !!n.unverified,
-        refs,
+        refs: [...ownRefs, ...cause],
+        ownRefs,
+        affectedBy: n.affectedBy?.text,
       });
       walk(file, n.children);
     }
   };
   for (const f of map.files ?? []) walk(f.path, f.tree);
   return out;
+}
+
+/** 스킬 없이 돌린 실행이 쓴 간단한 결과 형식 */
+export interface BaselineOutput {
+  summary?: string;
+  behaviors?: { text?: string; change?: string; evidence?: unknown[] }[];
+}
+
+const CHANGES = ["added", "deleted", "modified", "affected", "unchanged"];
+
+export function baselineNodes(out: BaselineOutput): FlatNode[] {
+  return (out.behaviors ?? []).map((b, i) => {
+    const refs: Ref[] = [];
+    let badRefs = 0;
+    for (const e of b.evidence ?? []) {
+      try {
+        refs.push(parseRef(String(e).trim().split(/\s+/)[0] ?? ""));
+      } catch {
+        badRefs++;
+      }
+    }
+    return {
+      file: refs[0]?.path ?? "(근거 없음)",
+      id: `b${String(i + 1).padStart(2, "0")}`,
+      text: String(b.text ?? ""),
+      change: (CHANGES.includes(b.change ?? "")
+        ? b.change
+        : "modified") as NodeChange,
+      unverified: false,
+      refs,
+      ownRefs: refs,
+      badRefs,
+    };
+  });
 }
 
 export interface BehaviorScore {
@@ -224,7 +273,10 @@ const ratio = (a: number, b: number) => (b ? a / b : 0);
  * 노드 문장이나 id가 바뀌어도 같은 정답지로 채점할 수 있다.
  */
 export function scoreMap(map: PrMap, answer: Answer): MapScore {
-  const nodes = flattenNodes(map);
+  return scoreNodes(flattenNodes(map), answer);
+}
+
+export function scoreNodes(nodes: FlatNode[], answer: Answer): MapScore {
   const answerRefs: Ref[] = [];
   const behaviors = answer.behaviors.map((b) => {
     const refs = b.evidence.map(parseRef);
@@ -260,7 +312,7 @@ export function scoreMap(map: PrMap, answer: Answer): MapScore {
   };
 }
 
-function codeIndex(root: string, input: CollectInput): CodeIndex {
+export function codeIndex(root: string, input: CollectInput): CodeIndex {
   return new CodeIndex(root, input.pr.base, input.pr.head, [
     ...input.files,
     ...input.unclassified,
@@ -271,10 +323,11 @@ function codeIndex(root: string, input: CollectInput): CodeIndex {
 export function changedLineCoverage(
   root: string,
   input: CollectInput,
-  map: PrMap,
+  map: PrMap | FlatNode[],
 ): { covered: number; total: number } {
   const code = codeIndex(root, input);
-  const refs = flattenNodes(map).flatMap((n) => n.refs);
+  const nodes = Array.isArray(map) ? map : flattenNodes(map);
+  const refs = nodes.flatMap((n) => n.refs);
   let covered = 0;
   let total = 0;
   for (const f of input.files) {
