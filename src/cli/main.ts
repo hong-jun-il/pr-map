@@ -223,7 +223,7 @@ function openInBrowser(file: string): void {
       : process.platform === "win32"
         ? ["cmd", ["/c", "start", "", file]]
         : ["xdg-open", [file]];
-  const child = spawn(cmd as string, args as string[], {
+  const child = spawn(cmd, args, {
     detached: true,
     stdio: "ignore",
   });
@@ -244,24 +244,24 @@ function cmdView(root: string, opts: { open: boolean }): void {
     "readingOrder" in ready;
   let data: ViewerData;
   if (current) {
-    const latest = latestHead(root, input!);
+    const latest = latestHead(root, input);
     const newer =
-      latest && latest !== ready!.pr.head
+      latest && latest !== ready.pr.head
         ? tryGit(
             root,
             "rev-list",
             "--count",
-            `${ready!.pr.head}..${latest}`,
+            `${ready.pr.head}..${latest}`,
           )?.trim()
         : null;
     data = {
-      ...ready!,
+      ...ready,
       latestHead: latest,
       newCommits: newer ? Number(newer) : null,
     };
-    if (latest && latest !== ready!.pr.head)
+    if (latest && latest !== ready.pr.head)
       console.log(
-        `새 커밋이 있습니다: 분석 ${ready!.pr.head.slice(0, 7)} · 최신 ${latest.slice(0, 7)}`,
+        `새 커밋이 있습니다: 분석 ${ready.pr.head.slice(0, 7)} · 최신 ${latest.slice(0, 7)}`,
       );
   } else {
     data = statusData(root);
@@ -410,7 +410,9 @@ function main(): number {
     case "setup": {
       const provider = values.provider ?? "claude";
       if (!Object.hasOwn(PROVIDERS, provider))
-        throw new CliError("--provider에는 claude, codex, gemini 중 하나를 쓰세요.");
+        throw new CliError(
+          "--provider에는 claude, codex, gemini 중 하나를 쓰세요.",
+        );
       return cmdSetup(root, {
         provider: provider as Provider,
         install: !!values.install,

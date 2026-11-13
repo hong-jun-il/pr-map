@@ -59,10 +59,13 @@ describe("collect의 diff.txt", () => {
     expect(collect().status).toBe(0);
     const text = readFileSync(path.join(fx.root, ".pr-map/diff.txt"), "utf8");
 
-    const section = text.split(/^## /m).find((s) =>
-      s.startsWith("src/auth/session-refresh.ts"),
-    )!;
-    const rows = section.split("\n").slice(1).filter((l) => /^(\d+|\.) (\d+|\.) /.test(l));
+    const section = text
+      .split(/^## /m)
+      .find((s) => s.startsWith("src/auth/session-refresh.ts"))!;
+    const rows = section
+      .split("\n")
+      .slice(1)
+      .filter((l) => /^(\d+|\.) (\d+|\.) /.test(l));
     expect(rows.length).toBeGreaterThan(10);
     const head = show(fx.head, "src/auth/session-refresh.ts");
     const base = show(fx.base, "src/auth/session-refresh.ts");
@@ -72,7 +75,9 @@ describe("collect의 diff.txt", () => {
       if (o !== ".") expect(base[Number(o) - 1]).toBe(code);
     }
 
-    expect(text).toContain("## src/auth/token-cache.ts (이전 경로 src/auth/token-store.ts)");
+    expect(text).toContain(
+      "## src/auth/token-cache.ts (이전 경로 src/auth/token-store.ts)",
+    );
     expect(text).toContain("## src/auth/legacy-refresh.ts · deleted");
     expect(text).not.toContain("## pnpm-lock.yaml");
   });

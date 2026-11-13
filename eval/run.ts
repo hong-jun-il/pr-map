@@ -38,7 +38,7 @@ const { values } = parseArgs({
   },
 });
 
-const skillDir = path.resolve(values.skill!);
+const skillDir = path.resolve(values.skill);
 const script = path.join(skillDir, "scripts", "pr-map.js");
 const runs = Number(values.runs);
 if (!existsSync(script)) {
@@ -49,7 +49,7 @@ if (!Number.isInteger(runs) || runs < 1) {
   console.error("--runs에는 1 이상의 정수를 쓰세요.");
   process.exit(1);
 }
-if (!/^[\w.-]+$/.test(values.label!)) {
+if (!/^[\w.-]+$/.test(values.label)) {
   console.error("--label에는 영문, 숫자, '.', '-', '_'만 쓰세요.");
   process.exit(1);
 }
@@ -122,11 +122,11 @@ function analyze(root: string): ClaudeResult | null {
       "--safe-mode",
       "--strict-mcp-config",
       "--model",
-      values.model!,
+      values.model,
       "--max-turns",
-      values["max-turns"]!,
+      values["max-turns"],
       "--max-budget-usd",
-      values["max-budget-usd"]!,
+      values["max-budget-usd"],
       "--no-session-persistence",
       "--output-format",
       "json",
@@ -160,7 +160,7 @@ function analyze(root: string): ClaudeResult | null {
 
 function runCase(c: EvalCase, n: number): void {
   const { root, input } = collect(c);
-  const out = path.join(RESULTS_DIR, values.label!, c.name, `run-${n}`);
+  const out = path.join(RESULTS_DIR, values.label, c.name, `run-${n}`);
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
   try {
@@ -208,8 +208,8 @@ function runCase(c: EvalCase, n: number): void {
         // collect가 0으로 두고, 검증에 실패할 때마다 1씩 오른다.
         fixes: state?.attempts ?? null,
       },
-      coverage: passed ? changedLineCoverage(root, input, map!) : null,
-      score: passed ? scoreMap(map!, c.answer) : null,
+      coverage: passed ? changedLineCoverage(root, input, map) : null,
+      score: passed ? scoreMap(map, c.answer) : null,
     };
     writeFileSync(
       path.join(out, "metrics.json"),
@@ -271,5 +271,5 @@ for (const c of cases) {
     }
   }
 }
-console.log(`\n결과: ${path.join(RESULTS_DIR, values.label!)}`);
+console.log(`\n결과: ${path.join(RESULTS_DIR, values.label)}`);
 console.log("집계: node --import tsx eval/score.ts");

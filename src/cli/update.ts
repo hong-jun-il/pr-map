@@ -133,7 +133,17 @@ function apply(version: string): void {
   const backup = `${target}.old-${process.pid}`;
   try {
     try {
-      git(temp, "clone", "-q", "--depth", "1", "--branch", `v${version}`, REPO_URL, "src");
+      git(
+        temp,
+        "clone",
+        "-q",
+        "--depth",
+        "1",
+        "--branch",
+        `v${version}`,
+        REPO_URL,
+        "src",
+      );
     } catch (err) {
       throw new CliError(
         `v${version}을 내려받지 못했습니다.\n${(err as { stderr?: Buffer }).stderr?.toString().trim() ?? ""}`.trim(),
@@ -150,7 +160,9 @@ function apply(version: string): void {
       renameSync(incoming, target);
     } catch (err) {
       renameSync(backup, target);
-      throw new CliError(`${parent}에 설치하지 못해 원래 버전을 유지합니다: ${(err as Error).message}`);
+      throw new CliError(
+        `${parent}에 설치하지 못해 원래 버전을 유지합니다: ${(err as Error).message}`,
+      );
     }
     rmSync(backup, { recursive: true, force: true });
   } finally {
@@ -166,7 +178,9 @@ export function cmdUpdate(opts: { apply: boolean }): number {
   try {
     latest = fetchLatest();
   } catch {
-    throw new CliError("최신 버전을 확인하지 못했습니다. 네트워크를 확인하세요.");
+    throw new CliError(
+      "최신 버전을 확인하지 못했습니다. 네트워크를 확인하세요.",
+    );
   }
   console.log(`설치 버전: ${__PR_MAP_VERSION__}`);
   console.log(`설치 위치: ${skillDir()}`);
