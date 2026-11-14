@@ -15021,6 +15021,17 @@ function writeText(file, text) {
 function writeJson(file, value) {
   writeText(file, JSON.stringify(value, null, 2) + "\n");
 }
+function compactJson(value) {
+  const lines = Object.entries(value).map(
+    ([key, v]) => Array.isArray(v) && v.length ? `${JSON.stringify(key)}: [
+${v.map((x) => `  ${JSON.stringify(x)}`).join(",\n")}
+]` : `${JSON.stringify(key)}: ${JSON.stringify(v)}`
+  );
+  return `{
+${lines.join(",\n")}
+}
+`;
+}
 
 // src/cli/validate.ts
 var import__ = __toESM(require__(), 1);
@@ -16171,7 +16182,38 @@ var MAX_ROWS_PER_FILE = 400;
 var MAX_LINE_CHARS = 240;
 var HEADER = `# \uBCC0\uACBD \uB0B4\uC6A9. \uC5F4 \uC21C\uC11C: head \uC904 \uBC88\uD638, base \uC904 \uBC88\uD638, \uBCC0\uACBD \uAE30\uD638, \uCF54\uB4DC.
 # +\uB294 head\uC5D0\uB9CC, -\uB294 base\uC5D0\uB9CC \uC788\uB294 \uC904\uC774\uB2E4. \uC5C6\uB294 \uCABD \uC904 \uBC88\uD638\uB294 . \uC73C\uB85C \uD45C\uC2DC\uD55C\uB2E4. \u2026\uB294 \uC0AC\uC774 \uCF54\uB4DC\uB97C \uC0DD\uB7B5\uD55C \uC790\uB9AC\uB2E4.
+# \uD14C\uC2A4\uD2B8 \uD30C\uC77C\uC740 \uBCF8\uBB38 \uB300\uC2E0 \uD14C\uC2A4\uD2B8 \uC120\uC5B8\uACFC \uADF8 \uC548\uC5D0\uC11C \uCD94\uAC00\uB41C \uC904 \uBC94\uC704(head \uC904 \uBC88\uD638)\uB9CC \uC2E3\uB294\uB2E4. \uC120\uC5B8 \uC904 \uBC88\uD638 \uB4A4\uC758 +\uB294 \uC774\uBC88\uC5D0 \uC0C8\uB85C \uC0DD\uAE34 \uD14C\uC2A4\uD2B8\uB2E4. \uBCF8\uBB38\uC774 \uD544\uC694\uD558\uBA74 git show <head>:<\uACBD\uB85C>\uB85C \uADF8 \uBC94\uC704\uB9CC \uC77D\uB294\uB2E4.
 `;
+var TEST_DECL = /\b(?:it|test|describe|context|specify)(?:\.\w+)*\s*\(|\bdef\s+test_?\w*|\bfunc\s+Test\w*|@(?:Test|ParameterizedTest)\b|#\[(?:\w+::)?test\]/;
+var clip = (text) => text.length > MAX_LINE_CHARS ? `${text.slice(0, MAX_LINE_CHARS)}\u2026` : text;
+function formatTestOutline(rows) {
+  const groups = [];
+  let current = { decl: null, ranges: [] };
+  groups.push(current);
+  const kept = rows.filter((r) => r.d !== "-");
+  for (const [i, row] of kept.entries()) {
+    if (TEST_DECL.test(row.t)) {
+      const next = /\(\s*$/.test(row.t) ? kept[i + 1] : void 0;
+      const decl = next ? { ...row, t: `${row.t.trim()} ${next.t.trim()}` } : row;
+      current = { decl, ranges: [] };
+      groups.push(current);
+    }
+    if (row.d !== "+") continue;
+    const last = current.ranges[current.ranges.length - 1];
+    if (last && last[1] === row.n - 1) last[1] = row.n;
+    else current.ranges.push([row.n, row.n]);
+  }
+  const lines = groups.filter((g) => g.ranges.length).map((g) => {
+    const ranges = g.ranges.map(([a, b]) => a === b ? `${a}` : `${a}-${b}`).join(", ");
+    const head = g.decl ? `${g.decl.n} ${g.decl.d === "+" ? "+" : " "} ${clip(g.decl.t.trim())}` : "(\uD14C\uC2A4\uD2B8 \uC120\uC5B8 \uBC16)";
+    return `${head}
+  \uCD94\uAC00\uB41C \uC904: ${ranges}`;
+  });
+  if (!lines.length) return "\uCD94\uAC00\uB41C \uC904\uC774 \uC5C6\uB2E4. \uC5F0\uACB0\uD560 \uD14C\uC2A4\uD2B8\uAC00 \uC5C6\uB2E4.";
+  const omitted = lines.length - MAX_ROWS_PER_FILE;
+  return omitted > 0 ? `${lines.slice(0, MAX_ROWS_PER_FILE).join("\n")}
+\u2026 ${omitted}\uAC1C \uC0DD\uB7B5.` : lines.join("\n");
+}
 function formatDiffRows(rows) {
   const lines = [];
   let lastHead = 0;
@@ -16189,21 +16231,27 @@ function formatDiffRows(rows) {
     lines.push(`\u2026 ${omitted}\uC904 \uC0DD\uB7B5. \uD544\uC694\uD558\uBA74 git diff\uB85C \uC774 \uD30C\uC77C\uB9CC \uC77D\uB294\uB2E4.`);
   return lines.join("\n");
 }
-function fileDiff(root, base, head, file) {
+function fileDiff(root, base, head, file, outline) {
   const title = `## ${file.path}${file.oldPath ? ` (\uC774\uC804 \uACBD\uB85C ${file.oldPath})` : ""} \xB7 ${file.status} +${file.additions} -${file.deletions}`;
   if (file.binary) return `${title}
 \uBC14\uC774\uB108\uB9AC \uD30C\uC77C\uC774\uB77C \uB0B4\uC6A9\uC744 \uC2E3\uC9C0 \uC54A\uC558\uB2E4.`;
   const paths = file.oldPath ? [file.oldPath, file.path] : [file.path];
-  const diff = tryGit(root, "diff", "-M", "-U3", base, head, "--", ...paths);
+  const context = outline ? "--unified=1000000" : "-U3";
+  const diff = tryGit(root, "diff", "-M", context, base, head, "--", ...paths);
   if (diff === null)
     return `${title}
 \uBCC0\uACBD \uB0B4\uC6A9\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4. git diff\uB85C \uC77D\uB294\uB2E4.`;
+  const rows = parseUnifiedDiff(diff);
   return `${title}
-${formatDiffRows(parseUnifiedDiff(diff))}`;
+${outline ? formatTestOutline(rows) : formatDiffRows(rows)}`;
 }
-function buildDiffText(root, base, head, files) {
+function buildDiffText(root, base, head, files, tests = []) {
+  const parts = [
+    ...files.map((f) => fileDiff(root, base, head, f, false)),
+    ...tests.map((f) => fileDiff(root, base, head, f, true))
+  ];
   return `${HEADER}
-${files.map((f) => fileDiff(root, base, head, f)).join("\n\n")}
+${parts.join("\n\n")}
 `;
 }
 
@@ -16375,11 +16423,11 @@ function collect(cwd, opts) {
     candidates: collectCandidates(root, mergeBase, head, files),
     previous: readJsonIfExists(mapPath(root))
   };
-  writeJson(inputPath(root), input);
+  writeText(inputPath(root), compactJson(input));
   const changedTests = unclassified.filter((f) => f.category === "test");
   writeText(
     diffPath(root),
-    buildDiffText(root, mergeBase, head, [...files, ...changedTests])
+    buildDiffText(root, mergeBase, head, files, changedTests)
   );
   writeJson(statePath(root), { head, attempts: 0, errors: [] });
   excludeOutput(root);

@@ -12,7 +12,7 @@ workspace=$(pwd -P)
 
 prompt="이 PR을 PR Map 형식으로 분석한다. 질문할 사람이 없는 자동 실행이므로 묻지 말고 끝까지 진행한다.
 
-1. .pr-map/skill/SKILL.md를 읽는다. '이 폴더'는 .pr-map/skill을 뜻한다.
+1. $workspace/.pr-map/skill/SKILL.md, $workspace/.pr-map/input.json, $workspace/.pr-map/diff.txt를 한 번에 함께 읽는다. '이 폴더'는 .pr-map/skill을 뜻한다.
 2. 수집은 끝났다. '분석 절차'의 2단계(분석)와 3단계(검증)만 수행해 .pr-map/pr-map.json을 완성한다.
 3. 검증 명령은 정확히 다음과 같다: node $script validate
 4. 빌드와 게시는 하지 않는다. 다음 단계의 스크립트가 처리한다.

@@ -29,16 +29,17 @@ PR 번호는 실행한 저장소의 `origin`에 연결된 GitHub 저장소 기�
 1. **수집**
    `node <스크립트> collect [--pr <번호>]`
    → `.pr-map/input.json` 생성: PR 정보, merge-base·head, 변경 파일·상태, 미분류 목록, 관계 후보, (있으면) 이전 `pr-map.json`.
-   → `.pr-map/diff.txt` 생성: 변경 파일과 바뀐 테스트의 변경 내용. 줄마다 head·base 줄 번호가 붙어 있다.
+   → `.pr-map/diff.txt` 생성: 변경 파일의 변경 내용과, 바뀐 테스트의 선언·추가 줄 범위 목록. 줄마다 head·base 줄 번호가 붙어 있다.
    PR 없이 브랜치만 비교하려면 `--base <ref>`를 쓴다.
    실패하면 오류 메시지를 사용자에게 그대로 보여주고 중단한다.
    `files`가 비어 있으면(예: 테스트만 바꾼 PR) 분석을 멈추고 사용자에게 알린다. 테스트도 보려면 `.pr-map.yml`에 `includeTests: true`를 넣으면 된다고 안내한다.
 
-2. **분석** — `.pr-map/input.json`과 `.pr-map/diff.txt`를 먼저 읽는다. `git diff`로 같은 내용을 다시 읽지 않는다. 호출하는 함수나 변경 주변처럼 `diff.txt`에 없는 코드가 필요할 때만 저장소를 직접 탐색한다(파일 읽기, grep). 근거 줄 번호는 `diff.txt`의 번호를 그대로 쓴다.
+2. **분석** — `.pr-map/input.json`과 `.pr-map/diff.txt`를 **한 번에 함께** 읽는다. 한 파일씩 차례로 읽지 않는다. `diff.txt`는 통째로 읽고, 도구 한도로 잘렸을 때만 이어서 읽는다. `git diff`로 같은 내용을 다시 읽지 않는다. 호출하는 함수나 변경 주변처럼 `diff.txt`에 없는 코드가 필요할 때만 저장소를 직접 탐색한다(파일 읽기, grep). 근거 줄 번호는 `diff.txt`의 번호를 그대로 쓴다.
    - 대상: 변경 파일(`files`) + 관계 후보 중 동작 이해에 필요한 파일(`reference`).
    - 범위: 변경된 함수와, 그 함수를 직접 호출하는 함수. 파일 전체를 설명하지 않는다.
    - **줄 번호는 분석 커밋 기준이다.** `checkout.matchesHead`가 false이거나 `checkout.dirty`가 true이면 작업 트리 파일을 믿지 말고 `git show <head>:<경로>`, `git show <base>:<경로>`로 읽는다.
-   - `.pr-map/pr-map.json`을 이 폴더의 `spec/pr-map.schema.json` 형식으로 작성한다. `pr.repo/number/base/head`는 스크립트가 채우므로 `pr.summary`만 신경 쓴다. 근거와 테스트 연결은 객체 대신 아래 "근거" 절의 짧은 문자열로 쓴다.
+   - `.pr-map/pr-map.json`을 아래 "지도 형식"대로 작성한다. `spec/pr-map.schema.json`은 검증이 형식 오류를 냈을 때만 읽는다. `pr.repo/number/base/head`는 스크립트가 채우므로 `pr.summary`만 신경 쓴다. 근거와 테스트 연결은 객체 대신 아래 "근거" 절의 짧은 문자열로 쓴다.
+   - 지도는 **파일 쓰기 도구로 한 번에** 쓰고, 고칠 때는 파일 편집 도구를 쓴다. 셸 명령(`cat <<EOF`, `sed -i`)으로 쓰거나 고치지 않는다. 자동 실행에서는 셸 쓰기가 거부되어 같은 내용을 두 번 쓰게 된다.
 
 3. **검증**
    `node <스크립트> validate`
@@ -50,6 +51,47 @@ PR 번호는 실행한 저장소의 `origin`에 연결된 GitHub 저장소 기�
    이어서 PR이 있으면 `node <스크립트> publish`, 없으면 `node <스크립트> view`.
    - PR 댓글은 다른 사람에게 보이므로, 사용자가 게시까지 요청한 경우가 아니면 게시 전에 확인을 받는다. 게시 대신 `view`만 열어도 된다.
    - 끝나면 댓글 URL(또는 뷰어 경로)과 "확인 필요 N건"만 짧게 보고한다. 출력에 "새 버전이 있습니다" 줄이 있으면 그 줄도 그대로 전한다. 업데이트를 직접 실행하지는 않는다.
+
+## 지도 형식
+
+```json
+{
+  "version": 2,
+  "pr": { "summary": "이 PR이 동작을 어떻게 바꾸는지 한 문장" },
+  "readingOrder": [{ "file": "session", "why": "갱신 흐름의 중심이다" }],
+  "files": [
+    {
+      "id": "session",
+      "path": "src/auth/session.ts",
+      "status": "modified",
+      "layer": "core",
+      "role": "세션을 조회하고 만료가 가까우면 갱신한다",
+      "tree": [
+        {
+          "id": "refresh",
+          "text": "만료가 가까움 → 토큰을 갱신한다",
+          "change": "unchanged",
+          "evidence": ["h:12-14 만료 확인"],
+          "children": [
+            {
+              "id": "refresh-fail",
+              "text": "갱신에 실패함 → 세션 삭제를 시도한다",
+              "change": "added",
+              "evidence": ["h:20-23 실패 처리", "b:18 이전 구현"],
+              "tests": ["t:tests/session.test.ts:40-58 실패 시 삭제 확인"]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "edges": [{ "from": "session", "to": "store", "label": "버전 조건부 삭제" }]
+}
+```
+
+- 파일에만 쓰는 선택 필드: `oldPath`(`renamed`일 때만, 필수), `replacedBy`(`deleted`일 때만, 필수).
+- 노드에만 쓰는 선택 필드: `affectedBy: { "text", "evidence" }`(`affected`일 때 필수), `unverified: true`, `tests`, `children`.
+- 엣지 선택 필드: `unverified: true`. 여기에 없는 필드는 쓰지 않는다.
 
 ## 업데이트
 
@@ -110,6 +152,7 @@ PR 번호는 실행한 저장소의 `origin`에 연결된 GitHub 저장소 기�
 ### 테스트 (`tests`)
 
 - 분기를 실제로 확인하는 테스트가 **이번 PR에서 추가·수정**되었을 때만 그 노드에 연결한다. 형식: `"t:tests/a.test.ts:10-12 역할"`. 경로는 항상 쓴다. 항상 head 코드다.
+- `diff.txt`에서 테스트 파일은 본문 없이 테스트 선언과 그 안에서 추가된 줄 범위만 나온다. 연결 범위는 그 줄 번호로 쓴다. 이름만으로 어떤 분기를 확인하는지 알 수 없을 때만 `git show <head>:<경로>`로 그 범위를 읽는다.
 - 바뀐 테스트 파일은 `input.json`의 `unclassified`(`테스트 · 기본 제외`) 또는 `files`에서 찾는다. 테스트 파일을 `files`에 넣으라는 뜻이 아니다.
 - 이번 PR에서 건드리지 않은 테스트와, 바뀐 기능과 상관없는 테스트는 연결하지 않는다. 이전 결과에 있던 연결도 조건에 맞지 않으면 지운다.
 - `added`, `modified`, `affected` 노드에만 쓴다. 맞는 테스트가 없으면 필드를 생략한다.

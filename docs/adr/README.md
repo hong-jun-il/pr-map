@@ -26,12 +26,13 @@
 
 ## 목록
 
-| 번호                                        | 결정                                                   | 상태                  |
-| ------------------------------------------- | ------------------------------------------------------ | --------------------- |
-| [0001](0001-analysis-size-limits.md)        | 지도 대상 파일 50개, 파일당 diff 400행으로 제한한다    | 채택 (근거 일부 없음) |
-| [0002](0002-eval-in-main.md)                | 평가 도구는 main의 `eval/`에 둔다                      | 채택                  |
-| [0003](0003-own-eval-runner.md)             | 평가는 `claude plugin eval` 대신 직접 만든 도구로 한다 | 채택                  |
-| [0004](0004-llm-judge-majority.md)          | 문장 채점은 다른 모델로 3번 묻고 다수결로 정한다       | 채택 (검증 전)        |
-| [0005](0005-no-unchecked-indexed-access.md) | `noUncheckedIndexedAccess`를 켠다                      | 채택                  |
-| [0006](0006-lint-rules-relaxed-in-tests.md) | 테스트에서는 `no-unsafe-*` 규칙을 끈다                 | 채택                  |
-| [0007](0007-ci-node-modules-cache.md)       | CI에서 `node_modules`를 통째로 캐시한다                | 채택                  |
+| 번호                                        | 결정                                                         | 상태                  |
+| ------------------------------------------- | ------------------------------------------------------------ | --------------------- |
+| [0001](0001-analysis-size-limits.md)        | 지도 대상 파일 50개, 파일당 diff 400행으로 제한한다          | 채택 (근거 일부 없음) |
+| [0002](0002-eval-in-main.md)                | 평가 도구는 main의 `eval/`에 둔다                            | 채택                  |
+| [0003](0003-own-eval-runner.md)             | 평가는 `claude plugin eval` 대신 직접 만든 도구로 한다       | 채택                  |
+| [0004](0004-llm-judge-majority.md)          | 문장 채점은 다른 모델로 3번 묻고 다수결로 정한다             | 채택 (검증 전)        |
+| [0005](0005-no-unchecked-indexed-access.md) | `noUncheckedIndexedAccess`를 켠다                            | 채택                  |
+| [0006](0006-lint-rules-relaxed-in-tests.md) | 테스트에서는 `no-unsafe-*` 규칙을 끈다                       | 채택                  |
+| [0007](0007-ci-node-modules-cache.md)       | CI에서 `node_modules`를 통째로 캐시한다                      | 채택                  |
+| [0008](0008-analysis-input-once.md)         | 분석 입력은 한 번에 읽히고, 테스트는 선언과 줄 범위만 싣는다 | 채택                  |

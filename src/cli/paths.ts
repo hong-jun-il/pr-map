@@ -31,3 +31,16 @@ export function writeText(file: string, text: string): void {
 export function writeJson(file: string, value: unknown): void {
   writeText(file, JSON.stringify(value, null, 2) + "\n");
 }
+
+/**
+ * 에이전트가 읽는 파일용. 최상위 키마다 한 줄, 배열은 항목마다 한 줄로 쓴다.
+ * 들여쓴 JSON보다 훨씬 짧고, 여전히 올바른 JSON이다.
+ */
+export function compactJson(value: object): string {
+  const lines = Object.entries(value).map(([key, v]) =>
+    Array.isArray(v) && v.length
+      ? `${JSON.stringify(key)}: [\n${v.map((x) => `  ${JSON.stringify(x)}`).join(",\n")}\n]`
+      : `${JSON.stringify(key)}: ${JSON.stringify(v)}`,
+  );
+  return `{\n${lines.join(",\n")}\n}\n`;
+}
